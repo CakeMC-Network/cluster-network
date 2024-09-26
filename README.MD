@@ -1,1 +1,1 @@
-# Self closing ring clustering network
+# Self closing ring clustering network topology
