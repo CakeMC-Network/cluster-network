@@ -1,0 +1,8 @@
+src/
+build.gradle.kts
+gradle.properties
+settings.gradle.kts
+gradle/wrapper/
+.idea/codeStyles/
+.vscode/settings.json
+.editorconfig

@@ -1,0 +1,7 @@
+.gradle/
+.idea/
+.vscode/
+build/
+out/
+/server/src/main/java/slidewars/
+credentials.properties
