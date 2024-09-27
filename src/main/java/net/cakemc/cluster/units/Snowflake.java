@@ -5,35 +5,34 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Enumeration;
 
+/**
+ * The {@code Snowflake} class generates unique identifiers (IDs) based on a
+ * combination of the current timestamp, a node identifier, and a sequence number.
+ * This implementation follows a similar design to Twitter's Snowflake ID generation
+ * strategy.
+ */
 public class Snowflake {
-	private static final int UNUSED_BITS = 1; // Sign bit, Unused (always set to 0)
-	private static final int EPOCH_BITS = 41;
-	private static final int NODE_ID_BITS = 10;
-	private static final int SEQUENCE_BITS = 12;
+	private static final int NODE_ID_BITS = 10;  // Number of bits for the node ID
+	private static final int SEQUENCE_BITS = 12;  // Number of bits for the sequence number
 
-	private static final long maxNodeId = (1L << NODE_ID_BITS) - 1;
-	private static final long maxSequence = (1L << SEQUENCE_BITS) - 1;
+	private static final long maxNodeId = (1L << NODE_ID_BITS) - 1;  // Maximum node ID value
+	private static final long maxSequence = (1L << SEQUENCE_BITS) - 1;  // Maximum sequence number value
 
-	// Custom Epoch (January 1, 2015, Midnight UTC = 2015-01-01T00:00:00Z)
-	private static final long DEFAULT_CUSTOM_EPOCH = 1420070400000L;
+	private static final long DEFAULT_CUSTOM_EPOCH = 1420070400000L;  // Default epoch for ID generation
 
-	private final long nodeId;
-	private final long customEpoch;
+	private final long nodeId;  // Unique identifier for the node
+	private final long customEpoch;  // Custom epoch for timestamp calculations
 
-	private volatile long lastTimestamp = -1L;
-	private volatile long sequence = 0L;
+	private volatile long lastTimestamp = -1L;  // Last generated timestamp
+	private volatile long sequence = 0L;  // Current sequence number
 
-
-	private static Snowflake instance;
-
-	public static Snowflake getInstance() {
-		if (instance == null) {
-			instance = new Snowflake();
-		}
-		return instance;
-	}
-
-	// Create Snowflake with a nodeId and custom epoch
+	/**
+	 * Constructs a {@code Snowflake} instance with a specified node ID and custom epoch.
+	 *
+	 * @param nodeId      The unique identifier for the node (should be between 0 and 1023).
+	 * @param customEpoch The custom epoch in milliseconds.
+	 * @throws IllegalArgumentException if nodeId is out of range.
+	 */
 	public Snowflake(long nodeId, long customEpoch) {
 		if (nodeId < 0 || nodeId > maxNodeId) {
 			throw new IllegalArgumentException(String.format("NodeId must be between %d and %d", 0, maxNodeId));
@@ -42,17 +41,20 @@ public class Snowflake {
 		this.customEpoch = customEpoch;
 	}
 
-	// Create Snowflake with a nodeId
-	public Snowflake(long nodeId) {
-		this(nodeId, DEFAULT_CUSTOM_EPOCH);
-	}
-
-	// Let Snowflake generate a nodeId
+	/**
+	 * Constructs a {@code Snowflake} instance with a generated node ID and the default epoch.
+	 */
 	public Snowflake() {
 		this.nodeId = createNodeId();
 		this.customEpoch = DEFAULT_CUSTOM_EPOCH;
 	}
 
+	/**
+	 * Generates the next unique ID.
+	 *
+	 * @return A unique long identifier.
+	 * @throws IllegalStateException if the system clock is invalid (i.e., the timestamp goes backward).
+	 */
 	public synchronized long nextId() {
 		long currentTimestamp = timestamp();
 
@@ -63,11 +65,9 @@ public class Snowflake {
 		if (currentTimestamp == lastTimestamp) {
 			sequence = (sequence + 1) & maxSequence;
 			if (sequence == 0) {
-				// Sequence Exhausted, wait till next millisecond.
 				currentTimestamp = waitNextMillis(currentTimestamp);
 			}
 		} else {
-			// reset sequence to start with zero for the next millisecond
 			sequence = 0;
 		}
 
@@ -78,21 +78,34 @@ public class Snowflake {
 		       | sequence;
 	}
 
-
-	// Get current timestamp in milliseconds, adjust for the custom epoch.
-	private long timestamp() {
+	/**
+	 * Gets the current timestamp adjusted by the custom epoch.
+	 *
+	 * @return The current timestamp in milliseconds since the custom epoch.
+	 */
+	public long timestamp() {
 		return Instant.now().toEpochMilli() - customEpoch;
 	}
 
-	// Block and wait till next millisecond
-	private long waitNextMillis(long currentTimestamp) {
+	/**
+	 * Waits for the next millisecond, ensuring that the timestamp has advanced.
+	 *
+	 * @param currentTimestamp The current timestamp to compare against.
+	 * @return The next valid timestamp.
+	 */
+	public long waitNextMillis(long currentTimestamp) {
 		while (currentTimestamp == lastTimestamp) {
 			currentTimestamp = timestamp();
 		}
 		return currentTimestamp;
 	}
 
-	private long createNodeId() {
+	/**
+	 * Creates a unique node ID based on the MAC address or a random number if unavailable.
+	 *
+	 * @return A unique node ID.
+	 */
+	public long createNodeId() {
 		long nodeId;
 		try {
 			StringBuilder sb = new StringBuilder();
@@ -110,25 +123,7 @@ public class Snowflake {
 		} catch (Exception ex) {
 			nodeId = (new SecureRandom().nextInt());
 		}
-		nodeId = nodeId & maxNodeId;
+		nodeId = nodeId & maxNodeId;  // Ensure nodeId is within range
 		return nodeId;
-	}
-
-	public long[] parse(long id) {
-		long maskNodeId = ((1L << NODE_ID_BITS) - 1) << SEQUENCE_BITS;
-		long maskSequence = (1L << SEQUENCE_BITS) - 1;
-
-		long timestamp = (id >> (NODE_ID_BITS + SEQUENCE_BITS)) + customEpoch;
-		long nodeId = (id & maskNodeId) >> SEQUENCE_BITS;
-		long sequence = id & maskSequence;
-
-		return new long[]{timestamp, nodeId, sequence};
-	}
-
-	@Override
-	public String toString() {
-		return "Snowflake Settings [EPOCH_BITS=" + EPOCH_BITS + ", NODE_ID_BITS=" + NODE_ID_BITS
-		       + ", SEQUENCE_BITS=" + SEQUENCE_BITS + ", CUSTOM_EPOCH=" + customEpoch
-		       + ", NodeId=" + nodeId + "]";
 	}
 }
