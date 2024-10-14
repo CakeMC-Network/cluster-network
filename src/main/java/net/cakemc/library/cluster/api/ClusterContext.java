@@ -219,7 +219,7 @@ public class ClusterContext implements PublicationHandler {
 	 */
 	@Override
 	public void result(Map<String, SyncResult> syncFeature) {
-		// TODO
+		// no results handeling
 	}
 
 	/**
