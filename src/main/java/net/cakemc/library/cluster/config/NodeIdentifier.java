@@ -33,12 +33,4 @@ public record NodeIdentifier(int id, String host, int port) {
 		return new NodeIdentifier(id, host, port);
 	}
 
-	/**
-	 * Returns the InetSocketAddress representation of this node.
-	 *
-	 * @return an InetSocketAddress using the node's host and port
-	 */
-	public InetSocketAddress address() {
-		return new InetSocketAddress(host, port);
-	}
 }

@@ -1819,6 +1819,7 @@ public class SyncNetworkHandler extends SimpleChannelInboundHandler<DefaultSyncP
 		if (endpointType == EndpointType.CLIENT) {
 			InetSocketAddress peer = ((InetSocketAddress) ctx.channel().remoteAddress());
 			NetworkClient sync = (NetworkClient) ctx.channel().attr(ChannelAttributes.SYNC_SESSION.getKey()).get(); // Use appropriate key
+
 			workCallback(sync, HandlerState.WORK_FAILED);
 		}
 	}
@@ -1974,6 +1975,7 @@ public class SyncNetworkHandler extends SimpleChannelInboundHandler<DefaultSyncP
 		currentSocket = (++currentSocket) % sessions.size();
 		boolean isAllTried = sessions.get(currentSocket).isAllTried();
 		boolean isImproperSocket = invalidClients.contains(currentSocket);
+
 		boolean isExpectedNode = expectedNodes.contains(sessions.get(currentSocket).getMemberId());
 
 		while (isAllTried || isImproperSocket ||
@@ -1986,7 +1988,8 @@ public class SyncNetworkHandler extends SimpleChannelInboundHandler<DefaultSyncP
 			}
 			currentSocket = (++currentSocket) % sessions.size();
 		}
-		DefaultSyncPublication message = createCompleteResponse(DefaultSyncPublication.MessageType.TYPE_CHECK, startupState, mode, sync, (byte) -1);
+		DefaultSyncPublication message = createCompleteResponse(DefaultSyncPublication.MessageType.TYPE_CHECK,
+		                                                        startupState, mode, sync, (byte) -1);
 		message.setContents(this.syncContents.values());
 		sessions.get(currentSocket).publish(message);
 	}

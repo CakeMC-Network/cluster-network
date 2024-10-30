@@ -20,8 +20,10 @@ import net.cakemc.library.cluster.codec.SyncNettyEncoder;
 import net.cakemc.library.cluster.handler.HandlerState;
 import net.cakemc.library.cluster.handler.SyncNetworkHandler;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Handles network communication for the cluster, managing socket connections
@@ -99,11 +101,14 @@ public class NetworkClient extends AbstractNetworkClient {
 
 				if (activeChannel == null || !activeChannel.isActive()) {
 					Thread connectionThread = new Thread(
-						 () -> connect(
-							  currentClusterAddress.getAddress().getHostAddress(),
-							  currentClusterAddress.getPort(), publication
-						 ),
-						 "sending-thread-" + Math.random()
+						 () -> {
+							 connect(
+								  currentClusterAddress.getAddress().getHostAddress(),
+								  currentClusterAddress.getPort(), publication
+							 );
+						 },
+						 "sending-thread-" + ThreadLocalRandom
+							  .current().nextInt(9999)
 					);
 
 					connectionThread.setDaemon(true);
@@ -179,7 +184,12 @@ public class NetworkClient extends AbstractNetworkClient {
 				 .closeFuture()
 				 .sync();
 
-		} catch (Exception e) {
+		} catch (Throwable exception) {
+			if (exception instanceof ConnectException connectException) {
+				// todo handle reconnect handler
+				return;
+			}
+
 			networkHandler.workCallback(this, HandlerState.WORK_FAILED);
 		} finally {
 			bossEventLoopGroup.shutdownGracefully();
@@ -236,9 +246,16 @@ public class NetworkClient extends AbstractNetworkClient {
 	 *
 	 * @return A string representation of the network client, showing its member ID.
 	 */
-	@Override
-	public String toString() {
-		return String.valueOf(getMemberId());
+	@Override public String toString() {
+		return "NetworkClient{" +
+		       "clusterMember=" + clusterMember +
+		       ", socketAddresses=" + socketAddresses +
+		       ", synchronizationLock=" + synchronizationLock +
+		       ", currentSocketIndex=" + currentSocketIndex +
+		       ", lastSocketIndex=" + lastSocketIndex +
+		       ", allSocketsAttempted=" + allSocketsAttempted +
+		       ", isClientImproper=" + isClientImproper +
+		       '}';
 	}
 
 	/**

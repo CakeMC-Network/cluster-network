@@ -12,8 +12,6 @@ import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import net.cakemc.library.cluster.codec.*;
-import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
 import net.cakemc.library.cluster.ClusterMember;
 import net.cakemc.library.cluster.ClusterSnapshot;
 import net.cakemc.library.cluster.Context;
@@ -23,15 +21,17 @@ import net.cakemc.library.cluster.codec.ClusterPublication;
 import net.cakemc.library.cluster.codec.DefaultSyncPublication.Command;
 import net.cakemc.library.cluster.codec.DefaultSyncPublication.SyncMode;
 import net.cakemc.library.cluster.codec.Publication;
+import net.cakemc.library.cluster.codec.SyncNettyDecoder;
+import net.cakemc.library.cluster.codec.SyncNettyEncoder;
 import net.cakemc.library.cluster.config.ClusterIdentificationContext;
 import net.cakemc.library.cluster.config.NodeIdentifier;
+import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
 import net.cakemc.library.cluster.handler.ClusterPublicationHandler;
 import net.cakemc.library.cluster.handler.SyncNetworkHandler;
 import net.cakemc.library.cluster.handler.SyncResult;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.net.BindException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -62,7 +62,8 @@ public class NetworkServer extends AbstractNetworkServer {
 	 *
 	 * @param networkHandler The handler for processing network events.
 	 * @param syncBindings   The context for synchronization bindings.
-	 * @throws NullPointerException if syncBindings or networkHandler is null.
+	 *
+	 * @throws NullPointerException  if syncBindings or networkHandler is null.
 	 * @throws IllegalStateException if the provided SyncNetworkHandler is of type client.
 	 */
 	public NetworkServer(SyncNetworkHandler networkHandler, ClusterIdentificationContext syncBindings) {
@@ -96,7 +97,7 @@ public class NetworkServer extends AbstractNetworkServer {
 	/**
 	 * Starts the network server, binding to the configured socket addresses.
 	 *
-	 * @throws IOException if an I/O error occurs while starting the server.
+	 * @throws IOException           if an I/O error occurs while starting the server.
 	 * @throws IllegalStateException if the server is already activated.
 	 */
 	@Override
@@ -130,20 +131,15 @@ public class NetworkServer extends AbstractNetworkServer {
 					 }
 				 });
 
-			List<SocketAddress> socketAddresses = new ArrayList<>();
-			for (NodeIdentifier nodeIdentifier : syncBindings.getSocketConfigs()) {
-				socketAddresses.add(nodeIdentifier.address());
-			}
-
 			Set<ClusterAddress> clusterAddresses = new HashSet<>();
-			for (SocketAddress socketAddress : socketAddresses) {
+			for (NodeIdentifier socketAddress : syncBindings.getSocketConfigs()) {
 				clusterAddresses.add(new ClusterAddress(
-					 ((InetSocketAddress) socketAddress).getAddress(),
-					 ((InetSocketAddress) socketAddress).getPort()
+					 (socketAddress).host(),
+					 (socketAddress).port()
 				));
 			}
 
-			if (socketAddresses.isEmpty()) {
+			if (syncBindings.getSocketConfigs().isEmpty()) {
 				return; // No addresses to bind to
 			}
 
@@ -160,8 +156,16 @@ public class NetworkServer extends AbstractNetworkServer {
 			}
 
 			// Bind to the socket addresses
-			for (SocketAddress address : socketAddresses) {
-				serverChannel = serverBootstrap.bind(address).sync().channel();
+			for (ClusterAddress address : clusterAddresses) {
+				serverChannel = serverBootstrap
+					 .bind("0.0.0.0", address.getPort())
+					 .addListener(future -> {
+						 if (future.isSuccess())
+							 return;
+
+						 throw new BindException("cannot bind server to address %s".formatted(address));
+					 })
+					 .sync().channel();
 			}
 
 			startClusterSyncing(syncContext);
@@ -182,6 +186,7 @@ public class NetworkServer extends AbstractNetworkServer {
 	 *
 	 * @param clusterAddresses The new set of cluster addresses.
 	 * @param clusterMember    The cluster member to update.
+	 *
 	 * @return true if the addresses were changed, false otherwise.
 	 */
 	private boolean updateSyncAddressesIfNeeded(Set<ClusterAddress> clusterAddresses, ClusterMember clusterMember) {
@@ -243,28 +248,30 @@ public class NetworkServer extends AbstractNetworkServer {
 
 	/**
 	 * Prepares the synchronization addresses for the specified cluster member.
-
+	 * <p>
 	 * This method updates the synchronization addresses, last modified timestamp,
 	 * and aware IDs for the provided cluster member instance. It ensures that
 	 * the addresses are not null before updating the member's state.
 	 *
-	 * @param addresses      A set of cluster addresses to be assigned to the cluster member.
-	 * @param ownInstance    The cluster member instance that needs to be updated.
-	 * @param lastModified   The timestamp indicating the last modification time.
+	 * @param addresses    A set of cluster addresses to be assigned to the cluster member.
+	 * @param ownInstance  The cluster member instance that needs to be updated.
+	 * @param lastModified The timestamp indicating the last modification time.
+	 *
 	 * @return {@code true} if the synchronization addresses were updated successfully.
+	 *
 	 * @throws NullPointerException if the provided addresses are null.
 	 */
 	@Override
 	public boolean prepareSyncAddresses(Set<ClusterAddress> addresses, ClusterMember ownInstance, long lastModified) {
 		ownInstance.setSyncAddresses(Objects.requireNonNull(addresses, "addresses cannot be null"));
 		ownInstance.setLastModified(lastModified);
-		ownInstance.setAwareIds(new short[]{syncContext.getOwnInfo().getId()});
+		ownInstance.setAwareIds(new short[]{ syncContext.getOwnInfo().getId() });
 		return true;
 	}
 
 	/**
 	 * Stops the network server, closing the server channel and shutting down the event loop groups.
-
+	 * <p>
 	 * This method checks if the server is currently running before attempting to close
 	 * the server channel and gracefully shut down the boss and worker event loop groups.
 	 * If the server is not running, no action is taken.

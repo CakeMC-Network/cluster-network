@@ -13,7 +13,7 @@ plugins {
     id("com.gradleup.shadow") version "8.3.0"
 }
 
-group = "net.cakemc.util"
+group = "net.cakemc.cluster"
 version = "0.0.0-develop"
 
 val repoProperties = Properties()
@@ -44,7 +44,7 @@ fun <V> prop(value: String): V {
 
 dependencies {
 
-    implementation(
+  implementation(
         group = "io.netty",
         name = "netty-common",
         version = prop("dep-netty")
