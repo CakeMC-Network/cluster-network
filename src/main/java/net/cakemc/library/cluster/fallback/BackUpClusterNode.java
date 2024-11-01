@@ -1,20 +1,12 @@
 package net.cakemc.library.cluster.fallback;
 
-import net.cakemc.library.cluster.Session;
 import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.api.handler.APIPublicationHandler;
 import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkClient;
-import net.cakemc.library.cluster.fallback.endpoint.handler.FallbackConnectionHandler;
+import net.cakemc.library.cluster.fallback.endpoint.handler.DummyConnectionHandler;
 import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkServer;
 import net.cakemc.library.cluster.fallback.endpoint.connection.AbstractConnectionManager;
 import net.cakemc.library.cluster.fallback.endpoint.connection.ConnectionManager;
-import net.cakemc.library.cluster.fallback.endpoint.packet.AbstractPacketRegistry;
-import net.cakemc.library.cluster.fallback.endpoint.packet.PacketRegistry;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RequestBackPacket;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.ResponseBackPacket;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
-import net.cakemc.library.cluster.handler.PublicationHandler;
 import net.cakemc.library.cluster.tick.TickThread;
 import net.cakemc.library.cluster.tick.TickAble;
 import net.cakemc.library.cluster.config.Snowflake;
@@ -22,11 +14,8 @@ import net.cakemc.library.cluster.config.Snowflake;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
 /**
  * Represents a cluster node in a distributed system.
@@ -38,9 +27,6 @@ import java.util.function.Consumer;
  * and processing incoming and outgoing backPackets.</p>
  */
 public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAble {
-
-	/** Using a thread-safe set to manage publication handlers */
-	private final Set<APIPublicationHandler> publicationHandlers = new CopyOnWriteArraySet<>();
 
 	/** Thread pool for executing tasks asynchronously. */
 	private final ExecutorService executorService;
@@ -63,11 +49,8 @@ public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAbl
 	/** Manager responsible for handling network connections. */
 	private final AbstractConnectionManager connectionManager;
 
-	/** Registry for managing packet types and their associated handlers. */
-	private final AbstractPacketRegistry packetRegistry;
-
 	/** Handler for managing connections and backPackets. */
-	private final FallbackConnectionHandler connectionHandler;
+	private final DummyConnectionHandler connectionHandler;
 
 	/** Thread responsible for periodic ticking tasks. */
 	private final TickThread tickThread;
@@ -92,10 +75,8 @@ public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAbl
 
 		this.networkId = snowflake.nextId();
 
-		this.packetRegistry = new PacketRegistry();
-
 		this.connectionManager = new ConnectionManager(this);
-		this.connectionHandler = new FallbackConnectionHandler(this);
+		this.connectionHandler = new DummyConnectionHandler(this);
 		this.connectionManager.registerPacketHandler(connectionHandler);
 
 		// Initialize connections to other nodes
@@ -121,19 +102,8 @@ public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAbl
 	 * @param packet The packet to be dispatched.
 	 */
 	@Override
-	public void dispatchPacketToRing(RingBackPacket packet) {
+	public void dispatchPacketToRing(Publication packet) {
 		connectionHandler.dispatchPacketToRing(packet);
-	}
-
-	/**
-	 * Dispatches a request packet to the ring and registers a callback for the reply.
-	 *
-	 * @param requestPacket The request packet to be sent.
-	 * @param replyPacket   A callback to handle the response packet.
-	 */
-	@Override
-	public void dispatchRequestToRing(RequestBackPacket requestPacket, Consumer<ResponseBackPacket> replyPacket) {
-		connectionHandler.dispatchRequestToRing(requestPacket, replyPacket);
 	}
 
 	/**
@@ -162,28 +132,6 @@ public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAbl
 		this.otherNodes.forEach((nodeInformation, fallbackNetworkClient) -> {
 			executorService.submit(fallbackNetworkClient::connect);
 		});
-	}
-
-	@Override
-	public void registerPublicationHandler(APIPublicationHandler publicationHandler) {
-		if (publicationHandler == null) {
-			throw new IllegalArgumentException("Publication handler cannot be null");
-		}
-
-		// Add the publication handler to the set (duplicate handlers are not allowed)
-		publicationHandlers.add(publicationHandler);
-	}
-
-	/**
-	 * Notifies all registered {@link PublicationHandler}s about a new publication.
-	 *
-	 * @param session the sender of the publication
-	 * @param publication the publication to distribute
-	 */
-	@Override public void notifyPublicationHandlers(Session session, Publication publication) {
-		for (APIPublicationHandler handler : publicationHandlers) {
-			handler.handlePublication(session, publication);
-		}
 	}
 
 	/**
@@ -232,16 +180,6 @@ public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAbl
 	@Override
 	public AbstractConnectionManager getConnectionManager() {
 		return connectionManager;
-	}
-
-	/**
-	 * Returns the packet registry managing the different packet types.
-	 *
-	 * @return The packet registry.
-	 */
-	@Override
-	public AbstractPacketRegistry getPacketRegistry() {
-		return packetRegistry;
 	}
 
 	/**

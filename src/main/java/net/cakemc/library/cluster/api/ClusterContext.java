@@ -10,6 +10,8 @@ import net.cakemc.library.cluster.config.ClusterIdentificationContext;
 import net.cakemc.library.cluster.config.NodeIdentifier;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
 import net.cakemc.library.cluster.fallback.BackUpClusterNode;
+import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec;
+import net.cakemc.library.cluster.fallback.endpoint.handler.AbstractConnectionHandler;
 import net.cakemc.library.cluster.handler.PublicationHandler;
 import net.cakemc.library.cluster.handler.SyncNetworkHandler;
 import net.cakemc.library.cluster.handler.SyncResult;
@@ -83,6 +85,9 @@ public class ClusterContext implements PublicationHandler {
 	private SyncNetworkHandler handler;
 	private AbstractBackUpEndpoint backUpEndpoint;
 
+	private SyncProtocolBundle protocolBundle;
+	private AbstractConnectionHandler connectionHandler;
+
 	/**
 	 * Constructs a new ClusterContext instance.
 	 */
@@ -99,7 +104,9 @@ public class ClusterContext implements PublicationHandler {
 		handler = context
 			 .make()
 			 .withCallBack(this)
-			 .withPublicationType(SoftPublication.class);
+			 .withPublicationType(publicationType);
+
+		PublicationCodec.publicationType = publicationType;
 
 		identifiers = new ArrayList<>();
 		clusterMembers = new ArrayList<>();
@@ -111,6 +118,8 @@ public class ClusterContext implements PublicationHandler {
 				 identifier.getId()
 			));
 		}
+
+		this.protocolBundle = new SyncProtocolBundle();
 
 		registry = new ClusterIdRegistry();
 		identifiers.forEach(nodeIdentifier -> registry.add((short) nodeIdentifier.id()));
@@ -127,6 +136,8 @@ public class ClusterContext implements PublicationHandler {
 			clusterMembers.add(member);
 		}
 
+		connectionHandler = new ClusterPublicationHandler(this);
+
 		clusterIdentificationContext = new ClusterIdentificationContext();
 		clusterIdentificationContext.setSocketConfigs(identifiers);
 
@@ -141,9 +152,9 @@ public class ClusterContext implements PublicationHandler {
 			 this.ownAddress, this.members.stream().toList(), authentication.getAuthKey()
 		);
 
-		backUpEndpoint.registerPublicationHandler((session, publication) -> {
-			this.callBack(session, publication, registry, new SyncProtocolBundle());
-		});
+		backUpEndpoint.getConnectionManager().registerPacketHandler(
+			 connectionHandler
+		);
 
 		EXECUTOR_SERVICE.execute(backUpEndpoint::start);
 
@@ -370,4 +381,9 @@ public class ClusterContext implements PublicationHandler {
 	public void setBackUpEndpoint(AbstractBackUpEndpoint backUpEndpoint) {
 		this.backUpEndpoint = backUpEndpoint;
 	}
+
+	public SyncProtocolBundle getProtocolBundle() {
+		return protocolBundle;
+	}
+
 }

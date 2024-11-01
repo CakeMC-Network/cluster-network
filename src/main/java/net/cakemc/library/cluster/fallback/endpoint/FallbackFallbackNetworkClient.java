@@ -11,11 +11,11 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import net.cakemc.library.cluster.api.MemberIdentifier;
+import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
 import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec;
-import net.cakemc.library.cluster.fallback.endpoint.codec.FallbackPacketCodec;
-import net.cakemc.library.cluster.fallback.endpoint.handler.FallbackBossHandler;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
+import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec;
+import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -29,7 +29,7 @@ import java.net.Socket;
  * handling reconnections in case of failures.</p>
  *
  * @see FallbackNetworkPoint
- * @see RingBackPacket
+ * @see Publication
  */
 public class FallbackFallbackNetworkClient extends FallbackNetworkPoint {
 
@@ -98,8 +98,8 @@ public class FallbackFallbackNetworkClient extends FallbackNetworkPoint {
 					 protected void initChannel(Channel channel) throws Exception {
 						 ChannelPipeline channelPipeline = channel.pipeline();
 						 channelPipeline.addFirst(COMPRESSION_CODEC, new CompressionCodec());
-						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new FallbackPacketCodec(clusterNode.getPacketRegistry()));
-						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new FallbackBossHandler(clusterNode, EndpointType.CLIENT));
+						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new PublicationCodec());
+						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new BossHandler(clusterNode, EndpointType.CLIENT));
 					 }
 				 })
 				 .remoteAddress(host, port)
@@ -130,10 +130,10 @@ public class FallbackFallbackNetworkClient extends FallbackNetworkPoint {
 	 *
 	 * <p>If the connection is not active, this method does nothing.</p>
 	 *
-	 * @param packet the {@link RingBackPacket} to be dispatched
+	 * @param packet the {@link Publication} to be dispatched
 	 */
 	@Override
-	public void dispatchPacket(RingBackPacket packet) {
+	public void dispatchPacket(Publication packet) {
 		super.dispatchPacket(packet);
 
 		if (channelFuture == null || !channelFuture.channel().isActive())

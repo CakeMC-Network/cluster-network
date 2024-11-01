@@ -1,13 +1,12 @@
 package net.cakemc.library.cluster.codec;
 
+import io.netty.buffer.ByteBuf;
 import net.cakemc.library.cluster.address.ClusterAddress;
 import net.cakemc.library.cluster.codec.DefaultSyncPublication.Command;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,15 +37,17 @@ public class ClusterPublication implements Publication {
 	/**
 	 * Constructs a new {@link ClusterPublication} with the specified parameters.
 	 *
-	 * @param id             the unique identifier for this publication
+	 * @param id            the unique identifier for this publication
 	 * @param authByKey     whether the publication is authenticated by key
-	 * @param key            the authentication key
-	 * @param version        the version of the publication
-	 * @param syncAddresses  a set of synchronization addresses
-	 * @param command        the command byte for this publication
+	 * @param key           the authentication key
+	 * @param version       the version of the publication
+	 * @param syncAddresses a set of synchronization addresses
+	 * @param command       the command byte for this publication
 	 */
-	public ClusterPublication(short id, boolean authByKey, String key, long version,
-	                          Set<ClusterAddress> syncAddresses, Command command) {
+	public ClusterPublication(
+		 short id, boolean authByKey, String key, long version,
+		 Set<ClusterAddress> syncAddresses, Command command
+	) {
 		this.id = id;
 		this.authByKey = authByKey;
 		this.authKey = key;
@@ -151,29 +152,57 @@ public class ClusterPublication implements Publication {
 	 * @return a byte array representing the serialized publication, or {@code null} if an error occurs
 	 */
 	@Override
-	public byte[] serialize() {
-		try (ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		     DataOutputStream out = new DataOutputStream(stream)) {
+	public void serialize(ByteBuf byteBuf) {
+		byteBuf.writeShort(id);
+		byteBuf.writeBoolean(authByKey);
 
-			out.writeShort(id);
-			out.writeBoolean(authByKey);
-			out.writeUTF(authKey);
-			out.writeLong(version);
-			out.writeByte(command.ordinal());
+		byteBuf.writeInt(authKey.length());
+		byteBuf.writeBytes(authKey.getBytes(StandardCharsets.UTF_8));
 
-			// Write the size of syncAddresses
-			out.writeByte(syncAddresses.size());
-			for (ClusterAddress addr : syncAddresses) {
-				byte[] ipBytes = addr.getAddress().getAddress();
-				out.writeByte(ipBytes.length);
-				out.write(ipBytes);
-				out.writeInt(addr.getPort());
+		byteBuf.writeLong(version);
+		byteBuf.writeByte(command.ordinal());
+
+		byteBuf.writeByte(syncAddresses.size());
+		for (ClusterAddress syncAddress : syncAddresses) {
+			byteBuf.writeByte(syncAddress.getAddress().getAddress().length);
+			byteBuf.writeBytes(syncAddress.getAddress().getAddress());
+			byteBuf.writeInt(syncAddress.getPort());
+		}
+	}
+
+
+	/**
+	 * Deserializes this publication from the given byte array.
+	 *
+	 * @param data the byte array containing serialized publication data
+	 */
+	@Override
+	public void deserialize(ByteBuf data) {
+		id = data.readShort();
+		authByKey = data.readBoolean();
+
+		byte[] authKeyBytes = new byte[data.readInt()];
+		data.readBytes(authKeyBytes);
+		authKey = new String(authKeyBytes);
+
+		version = data.readLong();
+		command = Command.values()[data.readByte()];
+
+		int len = data.readByte();
+		syncAddresses = new HashSet<>(); // Initialize the set to avoid null
+		try {
+			for (int i = 0 ; i < len ; i++) {
+				byte ipLength = data.readByte();
+				byte[] ip = new byte[ipLength];
+				data.readBytes(ip);
+				int port = data.readInt();
+
+
+				syncAddresses.add(new ClusterAddress(InetAddress.getByAddress(ip), port));
+
 			}
-
-			return stream.toByteArray();
-		} catch (Exception e) {
-			e.printStackTrace(); // Consider using a logger instead
-			return null; // You might want to throw a specific exception instead
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -196,35 +225,6 @@ public class ClusterPublication implements Publication {
 	@Override
 	public void configure(Map<String, ?> config) {
 		// Implement configuration logic if needed
-	}
-
-	/**
-	 * Deserializes this publication from the given byte array.
-	 *
-	 * @param data the byte array containing serialized publication data
-	 */
-	@Override
-	public void deserialize(byte[] data) {
-		try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
-			id = in.readShort();
-			authByKey = in.readBoolean();
-			authKey = in.readUTF();
-			version = in.readLong();
-			command = Command.values()[in.readByte()];
-
-			int len = in.readByte();
-			syncAddresses = new HashSet<>(); // Initialize the set to avoid null
-
-			for (int i = 0; i < len; i++) {
-				byte ipLength = in.readByte();
-				byte[] ip = new byte[ipLength];
-				in.readFully(ip); // Use readFully to ensure all bytes are read
-				int port = in.readInt();
-				syncAddresses.add(new ClusterAddress(InetAddress.getByAddress(ip), port));
-			}
-		} catch (Exception e) {
-			e.printStackTrace(); // Consider using a logger instead
-		}
 	}
 
 	/**

@@ -11,8 +11,8 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
 import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec;
-import net.cakemc.library.cluster.fallback.endpoint.codec.FallbackPacketCodec;
-import net.cakemc.library.cluster.fallback.endpoint.handler.FallbackBossHandler;
+import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec;
+import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler;
 
 /**
  * Represents a network server in the cluster that listens for incoming connections from clients.
@@ -21,7 +21,7 @@ import net.cakemc.library.cluster.fallback.endpoint.handler.FallbackBossHandler;
  * behavior for initializing the server, handling incoming connections, and shutting down.</p>
  *
  * @see FallbackNetworkPoint
- * @see FallbackBossHandler
+ * @see BossHandler
  */
 public class FallbackFallbackNetworkServer extends FallbackNetworkPoint {
 
@@ -86,8 +86,8 @@ public class FallbackFallbackNetworkServer extends FallbackNetworkPoint {
 					 protected void initChannel(Channel channel) throws Exception {
 						 ChannelPipeline channelPipeline = channel.pipeline();
 						 channelPipeline.addFirst(COMPRESSION_CODEC, new CompressionCodec());
-						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new FallbackPacketCodec(clusterNode.getPacketRegistry()));
-						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new FallbackBossHandler(clusterNode, EndpointType.SERVER));
+						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new PublicationCodec());
+						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new BossHandler(clusterNode, EndpointType.SERVER));
 					 }
 				 })
 

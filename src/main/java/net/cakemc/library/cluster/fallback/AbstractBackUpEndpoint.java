@@ -1,20 +1,12 @@
 package net.cakemc.library.cluster.fallback;
 
-import net.cakemc.library.cluster.Session;
 import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.api.handler.APIPublicationHandler;
 import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkClient;
 import net.cakemc.library.cluster.fallback.endpoint.connection.AbstractConnectionManager;
-import net.cakemc.library.cluster.fallback.endpoint.packet.AbstractPacketRegistry;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.ResponseBackPacket;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RequestBackPacket;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
 import net.cakemc.library.cluster.config.Snowflake;
-import net.cakemc.library.cluster.handler.PublicationHandler;
 
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Represents an abstract node in the cluster system.
@@ -37,23 +29,11 @@ public abstract class AbstractBackUpEndpoint {
 	/**
 	 * Dispatches a packet to the ring for processing.
 	 *
-	 * @param packet The {@link RingBackPacket} to be dispatched.
+	 * @param packet The {@link Publication} to be dispatched.
 	 *               This represents a message or command intended for
 	 *               the cluster's ring topology.
 	 */
-	public abstract void dispatchPacketToRing(RingBackPacket packet);
-
-	/**
-	 * Dispatches a request packet to the ring and handles the reply.
-	 *
-	 * @param requestPacket The {@link RequestBackPacket} to be sent to the ring.
-	 * @param replyPacket   A consumer that processes the {@link ResponseBackPacket}
-	 *                      received in response to the request. This allows
-	 *                      for asynchronous handling of replies.
-	 */
-	public abstract void dispatchRequestToRing(RequestBackPacket requestPacket, Consumer<ResponseBackPacket> replyPacket);
-
-	protected abstract void notifyPublicationHandlers(Session session, Publication publication);
+	public abstract void dispatchPacketToRing(Publication packet);
 
 	/**
 	 * Gets the node's own address information.
@@ -79,14 +59,6 @@ public abstract class AbstractBackUpEndpoint {
 	public abstract AbstractConnectionManager getConnectionManager();
 
 	/**
-	 * Retrieves the packet registry for managing packet types and their serialization/deserialization.
-	 *
-	 * @return The {@link AbstractPacketRegistry} that provides functionality to retrieve
-	 *         backPackets by their ID and vice versa.
-	 */
-	public abstract AbstractPacketRegistry getPacketRegistry();
-
-	/**
 	 * Retrieves the unique identifier generator for this node.
 	 *
 	 * @return The {@link Snowflake} instance used for generating unique IDs for
@@ -102,13 +74,4 @@ public abstract class AbstractBackUpEndpoint {
 	 */
 	public abstract long getNetworkId();
 
-	/**
-	 * Registers a new {@link APIPublicationHandler} to handle publications.
-	 *
-	 * <p>This method ensures that the same {@code APIPublicationHandler} cannot be registered more than once.</p>
-	 *
-	 * @param publicationHandler the publication handler to register
-	 * @throws IllegalArgumentException if the publicationHandler is null
-	 */
-	public abstract void registerPublicationHandler(APIPublicationHandler publicationHandler);
 }

@@ -64,7 +64,6 @@ public class Example {
             })
             // sending a publication
             .release(new SoftPublication(
-                    1l, 1l, 1,
                     "test", new byte[]{ 1, 3, 3, 7 },
                     1
             ));

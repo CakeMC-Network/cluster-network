@@ -5,7 +5,6 @@ import net.cakemc.library.cluster.SynchronisationType;
 import net.cakemc.library.cluster.address.ClusterIdRegistry;
 import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.codec.PublicationBundle;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
 import net.cakemc.library.cluster.handler.PublicationHandler;
 import net.cakemc.library.cluster.handler.SyncResult;
 
@@ -106,7 +105,7 @@ public class PublicationTask implements PublicationHandler {
 		       .withPublicationType(publication.getClass())
 		       .sync(publication);
 
-		if (publication instanceof RingBackPacket ringBackPacket)
+		if (publication instanceof Publication ringBackPacket)
 			this.context.getBackUpEndpoint().dispatchPacketToRing(ringBackPacket);
 	}
 
@@ -124,7 +123,7 @@ public class PublicationTask implements PublicationHandler {
 		       .sync(Arrays.stream(publications).toList());
 
 		for (Publication publication : publications) {
-			if (publication instanceof RingBackPacket ringBackPacket)
+			if (publication instanceof Publication ringBackPacket)
 				this.context.getBackUpEndpoint().dispatchPacketToRing(ringBackPacket);
 		}
 	}

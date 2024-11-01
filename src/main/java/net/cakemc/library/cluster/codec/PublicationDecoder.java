@@ -1,5 +1,7 @@
 package net.cakemc.library.cluster.codec;
 
+import io.netty.buffer.ByteBuf;
+
 import java.util.Map;
 
 /**
@@ -36,7 +38,7 @@ public interface PublicationDecoder {
 	 * implementing class accordingly. It is expected to handle any necessary
 	 * exceptions or errors that may arise during deserialization.</p>
 	 *
-	 * @param data the byte array representing the serialized publication data
+	 * @param data the byteBuf representing the serialized publication data
 	 */
-	void deserialize(byte[] data);
+	void deserialize(ByteBuf data);
 }

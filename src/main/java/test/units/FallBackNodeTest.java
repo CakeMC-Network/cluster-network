@@ -3,7 +3,6 @@ package test.units;
 import net.cakemc.library.cluster.api.MemberIdentifier;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
 import net.cakemc.library.cluster.fallback.BackUpClusterNode;
-import net.cakemc.library.cluster.fallback.endpoint.packet.impl.ClusterHelloBackPacket;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,14 +45,6 @@ public class FallBackNodeTest {
 
 		// Calculate and print the total number of unique connections
 		System.out.println(calculateAllConnections(INFORMATIONS.size()).size() * 2);
-
-		Thread.sleep(5000);
-
-		System.out.println("sending packet");
-		for (AbstractBackUpEndpoint node : NODES) {
-			node.dispatchPacketToRing(new ClusterHelloBackPacket(node.getNetworkId(),
-			                                                     node.getSnowflake().nextId(), -1, 99));
-		}
 	}
 
 	/**

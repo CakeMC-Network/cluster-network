@@ -1,30 +1,30 @@
 package net.cakemc.library.cluster.fallback.endpoint.handler;
 
 import io.netty.channel.Channel;
+import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
 
 /**
- * The {@code AbstractFallbackConnectionHandler} class serves as an abstract base class for handling
+ * The {@code AbstractConnectionHandler} class serves as an abstract base class for handling
  * connection events and packet processing within a cluster node.
  *
  * <p>This class defines methods for handling incoming backPackets, as well as
  * connection establishment and disconnection events. Subclasses should implement
- * the {@link #handlePacket(Channel, RingBackPacket)} method to provide specific
+ * the {@link #handlePacket(Channel, Publication)} method to provide specific
  * packet processing logic.</p>
  *
- * @see RingBackPacket
+ * @see Publication
  * @see EndpointType
  */
-public abstract class AbstractFallbackConnectionHandler {
+public abstract class AbstractConnectionHandler {
 
 	/**
-	 * Handles an incoming {@link RingBackPacket} from the specified sender channel.
+	 * Handles an incoming {@link Publication} from the specified sender channel.
 	 *
 	 * @param sender the {@link Channel} that sent the packet
-	 * @param ringPacket the incoming {@link RingBackPacket} to be processed
+	 * @param ringPacket the incoming {@link Publication} to be processed
 	 */
-	public abstract void handlePacket(Channel sender, RingBackPacket ringPacket);
+	public abstract void handlePacket(Channel sender, Publication ringPacket);
 
 	/**
 	 * Handles a connection event when a channel becomes active.

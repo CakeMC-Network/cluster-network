@@ -1,5 +1,6 @@
 package net.cakemc.library.cluster.handler;
 
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -426,7 +427,8 @@ public class SyncNetworkHandler extends SimpleChannelInboundHandler<DefaultSyncP
 		for (Publication publication : publications) {
 			ClusterIdRegistry awareIds = determineAwareNodes(publication);
 			syncContents.put(publication.getKey(), new SyncContent(publication.getKey(),
-			                                                       publication.getVersion(), awareIds, publication.serialize()
+			                                                       publication.getVersion(), awareIds,
+			                                                       publication.serialize()
 			));
 
 			SyncResult syncResult = new SyncResult();
@@ -628,7 +630,7 @@ public class SyncNetworkHandler extends SimpleChannelInboundHandler<DefaultSyncP
 		 SyncProtocolBundle output
 	) {
 		if (data != null) {
-			decoded.deserialize(data);
+			decoded.deserialize(Unpooled.copiedBuffer(data));
 		}
 		return callback.callBack(new NetworkSession(session), decoded, awareIds, output);
 	}

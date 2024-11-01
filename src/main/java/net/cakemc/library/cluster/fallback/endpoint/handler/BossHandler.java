@@ -2,54 +2,49 @@ package net.cakemc.library.cluster.fallback.endpoint.handler;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
 import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
-import net.cakemc.library.cluster.fallback.endpoint.packet.BackPacket;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
 
 /**
- * The {@code FallbackBossHandler} class is a Netty channel handler that manages incoming backPackets
+ * The {@code BossHandler} class is a Netty channel handler that manages incoming backPackets
  * and handles connection events for a cluster node.
  *
- * <p>This handler processes {@link BackPacket} instances, specifically handling {@link RingBackPacket} objects,
+ * <p>This handler processes {@link Publication} instances,
  * and delegates connection management to the associated cluster node.</p>
  *
  * @see SimpleChannelInboundHandler
- * @see BackPacket
- * @see RingBackPacket
+ * @see Publication
  * @see AbstractBackUpEndpoint
  * @see EndpointType
  */
-public class FallbackBossHandler extends SimpleChannelInboundHandler<BackPacket> {
+public class BossHandler extends SimpleChannelInboundHandler<Publication> {
 
 	private final AbstractBackUpEndpoint clusterNode;
 	private final EndpointType endpointType;
 
 	/**
-	 * Constructs a new {@code FallbackBossHandler} with the specified cluster node and endpoint type.
+	 * Constructs a new {@code BossHandler} with the specified cluster node and endpoint type.
 	 *
 	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
 	 * @param endpointType the {@link EndpointType} indicating whether the handler is for a server or client
 	 */
-	public FallbackBossHandler(AbstractBackUpEndpoint clusterNode, EndpointType endpointType) {
+	public BossHandler(AbstractBackUpEndpoint clusterNode, EndpointType endpointType) {
 		this.clusterNode = clusterNode;
 		this.endpointType = endpointType;
 	}
 
 	/**
-	 * Called when a backPacket is received. This method checks if the backPacket is an instance of {@link RingBackPacket}
+	 * Called when a backPacket is received. This method checks if the backPacket is an instance of {@link Publication}
 	 * and delegates the handling to the connection manager.
 	 *
 	 * @param ctx the {@link ChannelHandlerContext} for this handler
-	 * @param backPacket the incoming {@link BackPacket}
+	 * @param backPacket the incoming {@link Publication}
 	 * @throws Exception if an error occurs while processing the backPacket
 	 */
 	@Override
-	protected void channelRead0(ChannelHandlerContext ctx, BackPacket backPacket) throws Exception {
-		if (!(backPacket instanceof RingBackPacket ringPacket))
-			return;
-
-		clusterNode.getConnectionManager().handleInboundPacket(ctx.channel(), ringPacket);
+	protected void channelRead0(ChannelHandlerContext ctx, Publication backPacket) throws Exception {
+		clusterNode.getConnectionManager().handleInboundPacket(ctx.channel(), backPacket);
 	}
 
 	/**

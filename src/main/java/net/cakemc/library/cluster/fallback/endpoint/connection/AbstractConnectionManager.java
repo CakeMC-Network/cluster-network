@@ -1,9 +1,9 @@
 package net.cakemc.library.cluster.fallback.endpoint.connection;
 
 import io.netty.channel.Channel;
+import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
-import net.cakemc.library.cluster.fallback.endpoint.handler.AbstractFallbackConnectionHandler;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
+import net.cakemc.library.cluster.fallback.endpoint.handler.AbstractConnectionHandler;
 
 /**
  * An abstract class that manages network connections and packet handling.
@@ -15,31 +15,31 @@ import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
  *
  * <h2>BackPacket Handling</h2>
  * <p>BackPacket handlers are responsible for processing incoming backPackets based on their type.
- * The {@link AbstractFallbackConnectionHandler} can be registered for handling specific packet types.</p>
+ * The {@link AbstractConnectionHandler} can be registered for handling specific packet types.</p>
  *
  * <h2>Connection Management</h2>
  * <p>This class defines methods for handling connections and disconnections, allowing
  * subclasses to implement the logic for managing client and server connections.</p>
  *
- * @see AbstractFallbackConnectionHandler
- * @see RingBackPacket
+ * @see AbstractConnectionHandler
+ * @see Publication
  */
 public abstract class AbstractConnectionManager {
 
 	/**
 	 * Registers a packet handler to manage incoming backPackets.
 	 *
-	 * @param abstractFallbackConnectionHandler the {@link AbstractFallbackConnectionHandler} responsible for processing backPackets
+	 * @param abstractConnectionHandler the {@link AbstractConnectionHandler} responsible for processing backPackets
 	 */
-	public abstract void registerPacketHandler(AbstractFallbackConnectionHandler abstractFallbackConnectionHandler);
+	public abstract void registerPacketHandler(AbstractConnectionHandler abstractConnectionHandler);
 
 	/**
 	 * Handles an inbound packet received from a channel.
 	 *
 	 * @param sender the {@link Channel} from which the packet was received
-	 * @param ringPacket the {@link RingBackPacket} that was received
+	 * @param ringPacket the {@link Publication} that was received
 	 */
-	public abstract void handleInboundPacket(Channel sender, RingBackPacket ringPacket);
+	public abstract void handleInboundPacket(Channel sender, Publication ringPacket);
 
 	/**
 	 * Handles the disconnection of a channel.

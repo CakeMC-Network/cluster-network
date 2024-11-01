@@ -3,8 +3,8 @@ package net.cakemc.library.cluster.fallback.endpoint;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.kqueue.KQueue;
 import net.cakemc.library.cluster.api.MemberIdentifier;
+import net.cakemc.library.cluster.codec.Publication;
 import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
-import net.cakemc.library.cluster.fallback.endpoint.packet.ring.RingBackPacket;
 import net.cakemc.library.cluster.tick.TickAble;
 
 /**
@@ -21,7 +21,7 @@ import net.cakemc.library.cluster.tick.TickAble;
  *
  * @see AbstractBackUpEndpoint
  * @see MemberIdentifier
- * @see RingBackPacket
+ * @see Publication
  * @see TickAble
  */
 public abstract class FallbackNetworkPoint implements TickAble {
@@ -156,7 +156,7 @@ public abstract class FallbackNetworkPoint implements TickAble {
 	 *
 	 * <p>This method can be overridden to implement custom packet dispatching logic.</p>
 	 *
-	 * @param packet the {@link RingBackPacket} to be dispatched
+	 * @param packet the {@link Publication} to be dispatched
 	 */
-	public void dispatchPacket(RingBackPacket packet) {}
+	public void dispatchPacket(Publication packet) {}
 }
