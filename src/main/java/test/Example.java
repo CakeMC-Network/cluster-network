@@ -21,7 +21,7 @@ public class Example {
 		ClusterContext context = ClusterContext
 			 // own node id
 			 .make(1)
-			 // registering a outgoing channel
+			 // registering an outgoing channel
 			 .register("test")
 			 // registering the publication type
 			 .withPublicationType(SoftPublication.class)

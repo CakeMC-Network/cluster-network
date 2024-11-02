@@ -11,6 +11,8 @@ public class MetricPublication implements Publication {
 	private short id;
 	private double score;
 
+	private String channel;
+
 	public MetricPublication(short id, double score) {
 		this.id = id;
 		this.score = score;
@@ -22,6 +24,16 @@ public class MetricPublication implements Publication {
 	@Override
 	public String getKey() {
 		return "metric-result";
+	}
+
+	@Override
+	public void setChannel(String channel) {
+		this.channel = channel;
+	}
+
+	@Override
+	public String getChannel() {
+		return channel;
 	}
 
 	@Override

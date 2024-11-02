@@ -21,6 +21,29 @@ public interface Publication extends PublicationEncoder, PublicationDecoder {
 	 */
 	String getKey();
 
+
+	/**
+	 * Retrieves the communication channel associated with this publication.
+	 *
+	 * <p>The channel defines the specific path or topic within the cluster
+	 * where this publication is communicated. It is used to route the publication
+	 * to the intended destination in the cluster.</p>
+	 *
+	 * @return the channel associated with this publication
+	 */
+	String getChannel();
+
+	/**
+	 * Sets the communication channel for this publication.
+	 *
+	 * <p>This method allows the publication's channel to be configured, defining
+	 * the specific path or topic for routing within the cluster. It is crucial
+	 * for setting up the correct destination for the publication.</p>
+	 *
+	 * @param channel the channel to be set for this publication
+	 */
+	void setChannel(String channel);
+
 	/**
 	 * Retrieves the version of this publication.
 	 *

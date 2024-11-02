@@ -28,6 +28,8 @@ public class ClusterPublication implements Publication {
 	private Set<ClusterAddress> syncAddresses = new HashSet<>(); // Set of synchronization addresses
 	private Command command = Command.COMMAND_OK; // Command byte for the publication
 
+	private String channel;
+
 	/**
 	 * Default constructor initializing a new instance of {@link ClusterPublication}.
 	 */
@@ -254,5 +256,13 @@ public class ClusterPublication implements Publication {
 	 */
 	public void setVersion(long version) {
 		this.version = version;
+	}
+
+	@Override public void setChannel(String channel) {
+		this.channel = channel;
+	}
+
+	@Override public String getChannel() {
+		return channel;
 	}
 }

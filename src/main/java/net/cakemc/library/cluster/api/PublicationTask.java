@@ -20,12 +20,13 @@ import java.util.Map;
 public class PublicationTask implements PublicationHandler {
 
 	private final ClusterContext context;
-	private Publication message;
 
 	private PublicationHandler handler;
 	private SynchronisationType type;
 	private Class<? extends Publication> publicationType;
 	private short[] nodesToSkip;
+
+	private String channel = "_internal_";
 
 	public long dispatchTime;
 
@@ -48,6 +49,7 @@ public class PublicationTask implements PublicationHandler {
 	 * Sets a callback handler for the publication task.
 	 *
 	 * @param handler the {@link PublicationHandler} instance to be set as the callback handler.
+	 *
 	 * @return the current {@code PublicationTask} instance.
 	 */
 	public PublicationTask callBack(PublicationHandler handler) {
@@ -59,6 +61,7 @@ public class PublicationTask implements PublicationHandler {
 	 * Sets the synchronization type for the publication task.
 	 *
 	 * @param type the {@link SynchronisationType} to be used for synchronization.
+	 *
 	 * @return the current {@code PublicationTask} instance.
 	 */
 	public PublicationTask synchronisationType(SynchronisationType type) {
@@ -70,6 +73,7 @@ public class PublicationTask implements PublicationHandler {
 	 * Sets the publication type for the task.
 	 *
 	 * @param publicationType the class of the {@link Publication} type to be used.
+	 *
 	 * @return the current {@code PublicationTask} instance.
 	 */
 	public PublicationTask publicationType(Class<? extends Publication> publicationType) {
@@ -81,14 +85,32 @@ public class PublicationTask implements PublicationHandler {
 	 * Skips the specified nodes during the publication process.
 	 *
 	 * @param nodesToSkip an array of node IDs to be skipped during publication.
+	 *
 	 * @return the current {@code PublicationTask} instance.
 	 */
 	public PublicationTask skip(int... nodesToSkip) {
 		short[] toSkip = new short[nodesToSkip.length];
-		for (int index = 0; index < nodesToSkip.length; index++) {
+		for (int index = 0 ; index < nodesToSkip.length ; index++) {
 			toSkip[index] = (short) nodesToSkip[index];
 		}
 		this.nodesToSkip = toSkip;
+		return this;
+	}
+
+	/**
+	 * Sets the communication channel for this publication task.
+	 *
+	 * <p>The channel specifies the path or topic within the cluster where this
+	 * publication task will be directed. This method allows for fluent configuration
+	 * by returning the current instance of {@code PublicationTask} after setting
+	 * the channel.</p>
+	 *
+	 * @param channel the channel to be assigned to this publication task
+	 *
+	 * @return the current instance of {@code PublicationTask} with the updated channel
+	 */
+	public PublicationTask channel(String channel) {
+		this.channel = channel;
 		return this;
 	}
 
@@ -98,6 +120,8 @@ public class PublicationTask implements PublicationHandler {
 	 * @param publication the {@link Publication} instance to be synchronized.
 	 */
 	public void release(Publication publication) {
+		publication.setChannel(this.channel);
+
 		context.getContext()
 		       .make(type)
 		       .withCallBack(handler)
@@ -105,8 +129,8 @@ public class PublicationTask implements PublicationHandler {
 		       .withPublicationType(publication.getClass())
 		       .sync(publication);
 
-		if (publication instanceof Publication ringBackPacket)
-			this.context.getBackUpEndpoint().dispatchPacketToRing(ringBackPacket);
+		this.context.getBackUpEndpoint()
+		            .dispatchPacketToRing(publication);
 	}
 
 	/**
@@ -115,6 +139,10 @@ public class PublicationTask implements PublicationHandler {
 	 * @param publications an array of {@link Publication} instances to be synchronized.
 	 */
 	public void releaseMulti(Publication... publications) {
+		for (Publication publication : publications) {
+			publication.setChannel(this.channel);
+		}
+
 		context.getContext()
 		       .make(type)
 		       .withCallBack(handler)
@@ -123,8 +151,7 @@ public class PublicationTask implements PublicationHandler {
 		       .sync(Arrays.stream(publications).toList());
 
 		for (Publication publication : publications) {
-			if (publication instanceof Publication ringBackPacket)
-				this.context.getBackUpEndpoint().dispatchPacketToRing(ringBackPacket);
+			this.context.getBackUpEndpoint().dispatchPacketToRing(publication);
 		}
 	}
 
@@ -137,6 +164,7 @@ public class PublicationTask implements PublicationHandler {
 	 * @param message   the {@link Publication} message associated with the callback.
 	 * @param withNodes the {@link ClusterIdRegistry} containing the cluster nodes.
 	 * @param out       the {@link PublicationBundle} containing the outgoing publication bundle.
+	 *
 	 * @return {@code false} as the default implementation.
 	 */
 	@Override

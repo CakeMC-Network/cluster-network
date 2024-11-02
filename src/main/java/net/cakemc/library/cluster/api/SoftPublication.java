@@ -1,7 +1,6 @@
 package net.cakemc.library.cluster.api;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import net.cakemc.library.cluster.codec.Publication;
 
 import java.nio.charset.StandardCharsets;
@@ -27,9 +26,9 @@ public class SoftPublication implements Publication {
 	/**
 	 * Constructs a {@code SoftPublication} instance with the specified packet details and publication data.
 	 *
-	 * @param channel               the publication channel name.
-	 * @param data                  the data being published as a byte array.
-	 * @param version               the version of the publication.
+	 * @param channel the publication channel name.
+	 * @param data    the data being published as a byte array.
+	 * @param version the version of the publication.
 	 */
 	public SoftPublication(
 		 String channel, byte[] data,
@@ -118,8 +117,13 @@ public class SoftPublication implements Publication {
 	 *
 	 * @return the channel name.
 	 */
+	@Override
 	public String getChannel() {
 		return channel;
+	}
+
+	@Override public void setChannel(String channel) {
+		this.channel = channel;
 	}
 
 	/**
@@ -130,4 +134,5 @@ public class SoftPublication implements Publication {
 	public byte[] getData() {
 		return data;
 	}
+
 }
