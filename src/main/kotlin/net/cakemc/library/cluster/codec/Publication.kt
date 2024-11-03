@@ -44,7 +44,7 @@ interface Publication : PublicationEncoder, PublicationDecoder {
      *
      * @param channel the channel to be set for this publication
      */
-    var channel: String?
+    var channel: String
 
     /**
      * Retrieves the version of this publication.

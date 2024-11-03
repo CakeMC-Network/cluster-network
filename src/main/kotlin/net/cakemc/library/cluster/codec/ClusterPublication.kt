@@ -74,7 +74,7 @@ class ClusterPublication : Publication {
     var command: DefaultSyncPublication.Command =
         DefaultSyncPublication.Command.COMMAND_OK // Command byte for the publication
 
-    override var channel: String? = null
+    override var channel: String = "default"
 
     /**
      * Default constructor initializing a new instance of [ClusterPublication].

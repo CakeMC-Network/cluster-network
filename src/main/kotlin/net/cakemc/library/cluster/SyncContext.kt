@@ -244,7 +244,7 @@ class SyncContext @JvmOverloads constructor(// The identifier for this clusterMe
    *
    * @return the current ClusterSnapshot
    */
-  fun getOrCreateSnapshot(): ClusterSnapshot {
+  override fun getOrCreateSnapshot(): ClusterSnapshot {
     if (snapshot != null) {
       return snapshot as ClusterSnapshot
     }

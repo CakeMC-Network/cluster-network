@@ -15,9 +15,9 @@ class SoftPublication : Publication {
      *
      * @return the channel name.
      */
-    override var channel: String? = null
+    override var channel: String = ""
 
-    /**
+  /**
      * Retrieves the publication data.
      *
      * @return the data as a byte array.
@@ -40,7 +40,7 @@ class SoftPublication : Publication {
      * @param version the version of the publication.
      */
     constructor(
-        channel: String?, data: ByteArray?,
+        channel: String, data: ByteArray?,
         version: Long
     ) {
         this.channel = channel
@@ -61,7 +61,7 @@ class SoftPublication : Publication {
      */
     override fun close() {
         this.data = null
-        this.channel = null
+        this.channel = "default"
     }
 
     /**
