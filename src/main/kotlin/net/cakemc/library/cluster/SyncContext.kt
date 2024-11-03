@@ -42,10 +42,12 @@ class SyncContext @JvmOverloads constructor(// The identifier for this clusterMe
    * @return the last modified timestamp
    */
   @Volatile
-  override var clusterLastModified: Long = System.currentTimeMillis() // Timestamp for last modification
+  override var clusterLastModified: Long = System.currentTimeMillis()
+  // Timestamp for last modification
 
   @Volatile
-  override var snapshot: ClusterSnapshot? = null // Snapshot of the cluster's current state
+  override var snapshot: ClusterSnapshot? = null;
+  // Snapshot of the cluster's current state
 
   /**
    * Constructs a new SyncContext with the given clusterMember ID and configuration.
@@ -186,7 +188,7 @@ class SyncContext @JvmOverloads constructor(// The identifier for this clusterMe
 
     handler.mode = DefaultSyncPublication.SyncMode.SYNC_CLUSTER
     val messages: MutableList<Publication> = ArrayList()
-    val snapshot = getSnapshot()
+    val snapshot = getOrCreateSnapshot()
 
     for (n in snapshot.cluster!!) {
       if (n == null)
@@ -242,7 +244,7 @@ class SyncContext @JvmOverloads constructor(// The identifier for this clusterMe
    *
    * @return the current ClusterSnapshot
    */
-  fun getSnapshot(): ClusterSnapshot {
+  fun getOrCreateSnapshot(): ClusterSnapshot {
     if (snapshot != null) {
       return snapshot as ClusterSnapshot
     }
