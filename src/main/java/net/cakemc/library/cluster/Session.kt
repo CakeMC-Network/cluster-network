@@ -1,27 +1,26 @@
-package net.cakemc.library.cluster;
+package net.cakemc.library.cluster
 
-import java.net.SocketAddress;
+import java.net.SocketAddress
 
-public interface Session {
+interface Session {
+    /**
+     * Gets the remote address of the session.
+     *
+     * @return the remote SocketAddress
+     */
+    val remoteAddress: SocketAddress
 
-	/**
-	 * Gets the remote address of the session.
-	 *
-	 * @return the remote SocketAddress
-	 */
-	SocketAddress getRemoteAddress();
+    /**
+     * Gets the local address of the session.
+     *
+     * @return the local SocketAddress
+     */
+    val localAddress: SocketAddress
 
-	/**
-	 * Gets the local address of the session.
-	 *
-	 * @return the local SocketAddress
-	 */
-	SocketAddress getLocalAddress();
-
-	/**
-	 * Checks if the session is in the startup phase.
-	 *
-	 * @return true if the session is in startup, false otherwise
-	 */
-	boolean isInStartup();
+    /**
+     * Checks if the session is in the startup phase.
+     *
+     * @return true if the session is in startup, false otherwise
+     */
+    val isInStartup: Boolean
 }

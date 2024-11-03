@@ -1,7 +1,7 @@
-package net.cakemc.library.cluster.handler;
+package net.cakemc.library.cluster.handler
 
-public enum HandlerState {
-	WORK_DONE,
-	WORK_FAILED,
-	UNPROPER,
+enum class HandlerState {
+    WORK_DONE,
+    WORK_FAILED,
+    UNPROPER,
 }

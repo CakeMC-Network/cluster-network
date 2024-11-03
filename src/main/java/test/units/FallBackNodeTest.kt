@@ -1,86 +1,84 @@
-package test.units;
+package test.units
 
-import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
-import net.cakemc.library.cluster.fallback.BackUpClusterNode;
-
-import java.util.ArrayList;
-import java.util.List;
+import net.cakemc.library.cluster.api.MemberIdentifier
+import net.cakemc.library.cluster.api.MemberIdentifier.Companion.of
+import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint
+import net.cakemc.library.cluster.fallback.BackUpClusterNode
 
 /**
  * A test class for simulating the startup of multiple cluster nodes
  * and calculating their potential connections.
  *
- * <p>This class serves as a basic test harness for the cluster node
+ *
+ * This class serves as a basic test harness for the cluster node
  * implementation. It initializes several nodes, starts them in separate threads,
- * and calculates the number of unique connections between them.</p>
+ * and calculates the number of unique connections between them.
  */
-public class FallBackNodeTest {
+object FallBackNodeTest {
+    private val NODES: MutableList<AbstractBackUpEndpoint> = ArrayList()
 
-	private static final List<AbstractBackUpEndpoint> NODES = new ArrayList<>();
+    /**
+     * A static list of NodeInformation instances representing nodes in the cluster.
+     * Each node is initialized with an address and a status of INACTIVE.
+     */
+    private val INFORMATIONS: List<MemberIdentifier> = java.util.List.of(
+        of(1, "127.0.0.1", 30001),
+        of(2, "127.0.0.1", 30002),
+        of(3, "127.0.0.1", 30003),
+        of(4, "127.0.0.1", 30004)
+    )
 
-	/**
-	 * A static list of NodeInformation instances representing nodes in the cluster.
-	 * Each node is initialized with an address and a status of INACTIVE.
-	 */
-	private static final List<MemberIdentifier> INFORMATIONS = List.of(
-		  MemberIdentifier.of(1, "127.0.0.1", 30001),
-		  MemberIdentifier.of(2, "127.0.0.1", 30002),
-		  MemberIdentifier.of(3, "127.0.0.1", 30003),
-		  MemberIdentifier.of(4, "127.0.0.1", 30004)
-	);
+    /**
+     * The main method that serves as the entry point for the FallBackNodeTest class.
+     * It starts multiple cluster nodes based on the information in the INFORMATIONS list
+     * and calculates the total number of connections between them.
+     *
+     * @param args Command-line arguments (not used).
+     */
+    @Throws(InterruptedException::class)
+    @JvmStatic
+    fun main(args: Array<String>) {
+        // Start each node defined in the INFORMATIONS list
+        for (information in INFORMATIONS) {
+            startNode(information)
+        }
 
-	/**
-	 * The main method that serves as the entry point for the FallBackNodeTest class.
-	 * It starts multiple cluster nodes based on the information in the INFORMATIONS list
-	 * and calculates the total number of connections between them.
-	 *
-	 * @param args Command-line arguments (not used).
-	 */
-	public static void main(String[] args) throws InterruptedException {
-		// Start each node defined in the INFORMATIONS list
-		for (MemberIdentifier information : INFORMATIONS) {
-			startNode(information);
-		}
+        // Calculate and print the total number of unique connections
+        println(calculateAllConnections(INFORMATIONS.size).size * 2)
+    }
 
-		// Calculate and print the total number of unique connections
-		System.out.println(calculateAllConnections(INFORMATIONS.size()).size() * 2);
-	}
+    /**
+     * Starts a cluster node in a new thread.
+     *
+     * @param ownInformation The address of the node being started.
+     */
+    fun startNode(ownInformation: MemberIdentifier) {
+        println("starting ${ownInformation}")
+        val thread = Thread {
+            val node: AbstractBackUpEndpoint = BackUpClusterNode(ownInformation, INFORMATIONS, "-")
+            NODES.add(node)
+            node.start()
+        }
+        thread.name = ownInformation.toString()
+        thread.start()
+    }
 
-	/**
-	 * Starts a cluster node in a new thread.
-	 *
-	 * @param ownInformation The address of the node being started.
-	 */
-	public static void startNode(MemberIdentifier ownInformation) {
-		System.out.println("starting %s".formatted(ownInformation));
-		Thread thread = new Thread(() -> {
-			AbstractBackUpEndpoint node = new BackUpClusterNode(ownInformation, INFORMATIONS, "-");
-			NODES.add(node);
+    /**
+     * Calculates all unique connections between nodes in the cluster.
+     *
+     * @param nodeCount The number of nodes in the cluster.
+     * @return A list of unique connections represented as pairs of node indices.
+     */
+    fun calculateAllConnections(nodeCount: Int): List<Pair<Int, Int>> {
+        val connections: MutableList<Pair<Int, Int>> = ArrayList()
 
-			node.start();
+        // Generate all unique pairs of nodes
+        for (i in 0 until nodeCount) {
+            for (j in i + 1 until nodeCount) {
+                connections.add(Pair(i, j))
+            }
+        }
 
-		});
-		thread.setName(ownInformation.toString());
-		thread.start();
-	}
-
-	/**
-	 * Calculates all unique connections between nodes in the cluster.
-	 *
-	 * @param nodeCount The number of nodes in the cluster.
-	 * @return A list of unique connections represented as pairs of node indices.
-	 */
-	public static List<Pair<Integer, Integer>> calculateAllConnections(int nodeCount) {
-		List<Pair<Integer, Integer>> connections = new ArrayList<>();
-
-		// Generate all unique pairs of nodes
-		for (int i = 0; i < nodeCount; i++) {
-			for (int j = i + 1; j < nodeCount; j++) {
-				connections.add(new Pair<>(i, j));
-			}
-		}
-
-		return connections;
-	}
+        return connections
+    }
 }

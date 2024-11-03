@@ -1,135 +1,130 @@
-package net.cakemc.library.cluster.address;
+package net.cakemc.library.cluster.address
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.io.Externalizable
+import java.io.IOException
+import java.io.ObjectInput
+import java.io.ObjectOutput
+import java.net.InetAddress
+import java.net.InetSocketAddress
 
 /**
  * Represents a storable socket address that can be serialized and deserialized.
  *
- * <p>This class implements the {@link Externalizable} interface, allowing instances
- * of this class to be serialized to and deserialized from a byte stream.</p>
+ *
+ * This class implements the [Externalizable] interface, allowing instances
+ * of this class to be serialized to and deserialized from a byte stream.
  */
-public abstract class StorableSocketAddress implements Externalizable {
+abstract class StorableSocketAddress : Externalizable {
+    var address: InetSocketAddress? = null
 
-	private InetSocketAddress address;
+    /**
+     * Default constructor for Externalizable.
+     *
+     * This constructor is required for the [Externalizable] interface.
+     */
+    constructor()
 
-	/**
-	 * Default constructor for Externalizable.
-	 * <p>This constructor is required for the {@link Externalizable} interface.</p>
-	 */
-	public StorableSocketAddress() {
-		// Required for Externalizable
-	}
+    /**
+     * Constructs a `StorableSocketAddress` with the specified InetAddress and port.
+     *
+     * @param address the InetAddress of the socket
+     * @param port the port number
+     */
+    constructor(address: InetAddress?, port: Int) {
+        this.address = InetSocketAddress(address, port)
+    }
 
-	/**
-	 * Constructs a {@code StorableSocketAddress} with the specified InetAddress and port.
-	 *
-	 * @param address the InetAddress of the socket
-	 * @param port the port number
-	 */
-	public StorableSocketAddress(final InetAddress address, final int port) {
-		this.address = new InetSocketAddress(address, port);
-	}
+    /**
+     * Constructs a `StorableSocketAddress` with the specified hostname and port.
+     *
+     * @param hostname the hostname of the socket
+     * @param port the port number
+     */
+    constructor(hostname: String, port: Int) {
+        this.address = InetSocketAddress(hostname, port)
+    }
 
-	/**
-	 * Constructs a {@code StorableSocketAddress} with the specified hostname and port.
-	 *
-	 * @param hostname the hostname of the socket
-	 * @param port the port number
-	 */
-	public StorableSocketAddress(final String hostname, final int port) {
-		this.address = new InetSocketAddress(hostname, port);
-	}
+    /**
+     * Retrieves the InetAddress of the socket.
+     *
+     * @return the InetAddress of the socket
+     */
+    fun getAddress(): InetAddress {
+        return address!!.address
+    }
 
-	/**
-	 * Retrieves the InetAddress of the socket.
-	 *
-	 * @return the InetAddress of the socket
-	 */
-	public InetAddress getAddress() {
-		return address.getAddress();
-	}
+    val port: Int
+        /**
+         * Retrieves the port number of the socket.
+         *
+         * @return the port number
+         */
+        get() = address!!.port
 
-	/**
-	 * Retrieves the port number of the socket.
-	 *
-	 * @return the port number
-	 */
-	public int getPort() {
-		return address.getPort();
-	}
+    /**
+     * Writes the socket address to the specified ObjectOutput stream.
+     *
+     * @param out the ObjectOutput stream to write the address to
+     * @throws IOException if an I/O error occurs during writing
+     */
+    @Throws(IOException::class)
+    override fun writeExternal(out: ObjectOutput) {
+        val addressBytes = getAddress().address
+        out.writeShort(addressBytes.size)
+        out.write(addressBytes)
+        out.writeInt(port)
+    }
 
-	/**
-	 * Writes the socket address to the specified ObjectOutput stream.
-	 *
-	 * @param out the ObjectOutput stream to write the address to
-	 * @throws IOException if an I/O error occurs during writing
-	 */
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		byte[] addressBytes = getAddress().getAddress();
-		out.writeShort(addressBytes.length);
-		out.write(addressBytes);
-		out.writeInt(getPort());
-	}
+    /**
+     * Reads the socket address from the specified ObjectInput stream.
+     *
+     * @param in the ObjectInput stream to read the address from
+     * @throws IOException if an I/O error occurs during reading
+     */
+    @Throws(IOException::class)
+    override fun readExternal(`in`: ObjectInput) {
+        val length = `in`.readShort()
+        var inetAddress: InetAddress? = null
 
-	/**
-	 * Reads the socket address from the specified ObjectInput stream.
-	 *
-	 * @param in the ObjectInput stream to read the address from
-	 * @throws IOException if an I/O error occurs during reading
-	 */
-	@Override
-	public void readExternal(ObjectInput in) throws IOException {
-		short length = in.readShort();
-		InetAddress inetAddress = null;
+        if (length > 0) {
+            val addressBytes = ByteArray(length.toInt())
+            `in`.readFully(addressBytes)
+            inetAddress = InetAddress.getByAddress(addressBytes)
+        }
 
-		if (length > 0) {
-			byte[] addressBytes = new byte[length];
-			in.readFully(addressBytes);
-			inetAddress = InetAddress.getByAddress(addressBytes);
-		}
+        val port = `in`.readInt()
+        this.address = InetSocketAddress(inetAddress, port)
+    }
 
-		int port = in.readInt();
-		this.address = new InetSocketAddress(inetAddress, port);
-	}
+    /**
+     * Compares this socket address to the specified object for equality.
+     *
+     * @param obj the object to compare to
+     * @return `true` if the specified object is equal to this socket address, `false` otherwise
+     */
+    override fun equals(obj: Any?): Boolean {
+        if (this === obj) return true
+        if (obj is StorableSocketAddress) {
+            return this.address == obj.address
+        }
+        return false
+    }
 
-	/**
-	 * Compares this socket address to the specified object for equality.
-	 *
-	 * @param obj the object to compare to
-	 * @return {@code true} if the specified object is equal to this socket address, {@code false} otherwise
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) return true;
-		if (obj instanceof StorableSocketAddress other) {
-			return this.address.equals(other.address);
-		}
-		return false;
-	}
+    /**
+     * Returns a hash code value for this socket address.
+     *
+     * @return a hash code value for this socket address
+     */
+    override fun hashCode(): Int {
+        return if (address != null) address!!.hashCode() else 0
+    }
 
-	/**
-	 * Returns a hash code value for this socket address.
-	 *
-	 * @return a hash code value for this socket address
-	 */
-	@Override
-	public int hashCode() {
-		return address != null ? address.hashCode() : 0;
-	}
-
-	/**
-	 * Returns a string representation of this socket address.
-	 *
-	 * @return a string representation of this socket address
-	 */
-	@Override
-	public String toString() {
-		return address.toString();
-	}
+    /**
+     * Returns a string representation of this socket address.
+     *
+     * @return a string representation of this socket address
+     */
+    override fun toString(): String {
+        return address.toString()
+    }
 }

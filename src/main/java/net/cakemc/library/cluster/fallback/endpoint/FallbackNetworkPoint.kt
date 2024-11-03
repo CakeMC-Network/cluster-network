@@ -1,162 +1,158 @@
-package net.cakemc.library.cluster.fallback.endpoint;
+package net.cakemc.library.cluster.fallback.endpoint
 
-import io.netty.channel.epoll.Epoll;
-import io.netty.channel.kqueue.KQueue;
-import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.codec.Publication;
-import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
-import net.cakemc.library.cluster.tick.TickAble;
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.kqueue.KQueue
+import net.cakemc.library.cluster.api.MemberIdentifier
+import net.cakemc.library.cluster.codec.Publication
+import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint
+import net.cakemc.library.cluster.tick.TickAble
 
 /**
  * Represents a network endpoint in the cluster that can establish connections and
  * communicate with other nodes.
  *
- * <p>The {@code FallbackNetworkPoint} class serves as an abstract base for various network
+ *
+ * The `FallbackNetworkPoint` class serves as an abstract base for various network
  * implementations, such as client and server endpoints. It manages connection
  * parameters and provides methods for initializing, connecting, and shutting down
- * the network point.</p>
+ * the network point.
  *
- * <p>This class also includes support for different channel types, specifically
- * Epoll and KQueue, which are available depending on the operating system.</p>
+ *
+ * This class also includes support for different channel types, specifically
+ * Epoll and KQueue, which are available depending on the operating system.
  *
  * @see AbstractBackUpEndpoint
+ *
  * @see MemberIdentifier
+ *
  * @see Publication
+ *
  * @see TickAble
  */
-public abstract class FallbackNetworkPoint implements TickAble {
+abstract class FallbackNetworkPoint : TickAble {
+    /**
+     * The cluster node associated with this network point.
+     */
+    protected val clusterNode: AbstractBackUpEndpoint
 
-	/**
-	 * The name of the packet codec handler.
-	 */
-	protected static final String PACKET_CODEC = "packet_codec";
+    /**
+     * Returns the host address of this network point.
+     *
+     * @return the host address as a `String`
+     */
+    /**
+     * The host address of this network point.
+     */
+    val host: String
 
-	/**
-	 * The name of the compression codec handler.
-	 */
-	protected static final String COMPRESSION_CODEC = "compression_codec";
+    /**
+     * Returns the port number of this network point.
+     *
+     * @return the port number as an `int`
+     */
+    /**
+     * The port number of this network point.
+     */
+    val port: Int
 
-	/**
-	 * The name of the boss handler for managing acceptor threads.
-	 */
-	protected static final String BOSS_HANDLER = "boss_handler";
+    /**
+     * Checks if this network point is currently connected.
+     *
+     * @return `true` if connected, `false` otherwise
+     */
+    /**
+     * Indicates whether this network point is currently connected.
+     */
+    var isConnected: Boolean = false
+        protected set
 
-	/**
-	 * Indicates whether Epoll is available for use.
-	 */
-	public static final boolean EPOLL = Epoll.isAvailable();
+    /**
+     * Constructs a new `FallbackNetworkPoint` with the specified cluster node.
+     *
+     * @param clusterNode the [AbstractBackUpEndpoint] representing the cluster node
+     */
+    constructor(clusterNode: AbstractBackUpEndpoint) {
+        this.clusterNode = clusterNode
+        this.host = clusterNode.ownNode.address.address!!.hostName
+        this.port = clusterNode.ownNode.address.port
+    }
 
-	/**
-	 * Indicates whether KQueue is available for use.
-	 */
-	public static final boolean KQUEUE = KQueue.isAvailable();
+    /**
+     * Constructs a new `FallbackNetworkPoint` with the specified cluster node, host,
+     * and port.
+     *
+     * @param clusterNode the [AbstractBackUpEndpoint] representing the cluster node
+     * @param host the host address of the network point
+     * @param port the port number of the network point
+     */
+    constructor(clusterNode: AbstractBackUpEndpoint, host: String, port: Int) {
+        this.clusterNode = clusterNode
+        this.host = host
+        this.port = port
+    }
 
-	/**
-	 * The cluster node associated with this network point.
-	 */
-	protected final AbstractBackUpEndpoint clusterNode;
+    /**
+     * Constructs a new `FallbackNetworkPoint` using the specified cluster node and
+     * node information.
+     *
+     * @param clusterNode the [AbstractBackUpEndpoint] representing the cluster node
+     * @param nodeInformation the [MemberIdentifier] containing address details
+     */
+    constructor(clusterNode: AbstractBackUpEndpoint, nodeInformation: MemberIdentifier) {
+        this.clusterNode = clusterNode
+        this.host = nodeInformation.address.address!!.hostName
+        this.port = nodeInformation.address.port
+    }
 
-	/**
-	 * The host address of this network point.
-	 */
-	protected final String host;
+    /**
+     * Initializes the network point, setting up necessary resources.
+     */
+    abstract fun initialize()
 
-	/**
-	 * The port number of this network point.
-	 */
-	protected final int port;
+    /**
+     * Establishes a connection to the specified network point.
+     */
+    abstract fun connect()
 
-	/**
-	 * Indicates whether this network point is currently connected.
-	 */
-	protected boolean connected;
+    /**
+     * Shuts down the network point, releasing any resources and connections.
+     */
+    abstract fun shutdown()
 
-	/**
-	 * Constructs a new {@code FallbackNetworkPoint} with the specified cluster node.
-	 *
-	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
-	 */
-	public FallbackNetworkPoint(AbstractBackUpEndpoint clusterNode) {
-		this.clusterNode = clusterNode;
-		this.host = clusterNode.getOwnNode().getAddress().getAddress().getHostAddress();
-		this.port = clusterNode.getOwnNode().getAddress().getPort();
-	}
+    /**
+     * Dispatches a packet to the appropriate handler.
+     *
+     *
+     * This method can be overridden to implement custom packet dispatching logic.
+     *
+     * @param packet the [Publication] to be dispatched
+     */
+    open fun dispatchPacket(packet: Publication?) {}
 
-	/**
-	 * Constructs a new {@code FallbackNetworkPoint} with the specified cluster node, host,
-	 * and port.
-	 *
-	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
-	 * @param host the host address of the network point
-	 * @param port the port number of the network point
-	 */
-	public FallbackNetworkPoint(AbstractBackUpEndpoint clusterNode, String host, int port) {
-		this.clusterNode = clusterNode;
-		this.host = host;
-		this.port = port;
-	}
+    companion object {
+        /**
+         * The name of the packet codec handler.
+         */
+        val PACKET_CODEC: String = "packet_codec"
 
-	/**
-	 * Constructs a new {@code FallbackNetworkPoint} using the specified cluster node and
-	 * node information.
-	 *
-	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
-	 * @param nodeInformation the {@link MemberIdentifier} containing address details
-	 */
-	public FallbackNetworkPoint(AbstractBackUpEndpoint clusterNode, MemberIdentifier nodeInformation) {
-		this.clusterNode = clusterNode;
-		this.host = nodeInformation.getAddress().getAddress().getHostAddress();
-		this.port = nodeInformation.getAddress().getPort();
-	}
+        /**
+         * The name of the compression codec handler.
+         */
+        val COMPRESSION_CODEC: String = "compression_codec"
 
-	/**
-	 * Initializes the network point, setting up necessary resources.
-	 */
-	public abstract void initialize();
+        /**
+         * The name of the boss handler for managing acceptor threads.
+         */
+        val BOSS_HANDLER: String = "boss_handler"
 
-	/**
-	 * Establishes a connection to the specified network point.
-	 */
-	public abstract void connect();
+        /**
+         * Indicates whether Epoll is available for use.
+         */
+        val EPOLL: Boolean = Epoll.isAvailable()
 
-	/**
-	 * Shuts down the network point, releasing any resources and connections.
-	 */
-	public abstract void shutdown();
-
-	/**
-	 * Returns the host address of this network point.
-	 *
-	 * @return the host address as a {@code String}
-	 */
-	public String getHost() {
-		return host;
-	}
-
-	/**
-	 * Returns the port number of this network point.
-	 *
-	 * @return the port number as an {@code int}
-	 */
-	public int getPort() {
-		return port;
-	}
-
-	/**
-	 * Checks if this network point is currently connected.
-	 *
-	 * @return {@code true} if connected, {@code false} otherwise
-	 */
-	public boolean isConnected() {
-		return connected;
-	}
-
-	/**
-	 * Dispatches a packet to the appropriate handler.
-	 *
-	 * <p>This method can be overridden to implement custom packet dispatching logic.</p>
-	 *
-	 * @param packet the {@link Publication} to be dispatched
-	 */
-	public void dispatchPacket(Publication packet) {}
+        /**
+         * Indicates whether KQueue is available for use.
+         */
+        val KQUEUE: Boolean = KQueue.isAvailable()
+    }
 }

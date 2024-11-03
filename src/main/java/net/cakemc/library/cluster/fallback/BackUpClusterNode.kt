@@ -1,214 +1,159 @@
-package net.cakemc.library.cluster.fallback;
+package net.cakemc.library.cluster.fallback
 
-import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.codec.Publication;
-import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkClient;
-import net.cakemc.library.cluster.fallback.endpoint.handler.DummyConnectionHandler;
-import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkServer;
-import net.cakemc.library.cluster.fallback.endpoint.connection.AbstractConnectionManager;
-import net.cakemc.library.cluster.fallback.endpoint.connection.ConnectionManager;
-import net.cakemc.library.cluster.tick.TickThread;
-import net.cakemc.library.cluster.tick.TickAble;
-import net.cakemc.library.cluster.config.Snowflake;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import net.cakemc.library.cluster.api.MemberIdentifier
+import net.cakemc.library.cluster.codec.*
+import net.cakemc.library.cluster.config.Snowflake
+import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkClient
+import net.cakemc.library.cluster.fallback.endpoint.FallbackFallbackNetworkServer
+import net.cakemc.library.cluster.fallback.endpoint.connection.AbstractConnectionManager
+import net.cakemc.library.cluster.fallback.endpoint.connection.ConnectionManager
+import net.cakemc.library.cluster.fallback.endpoint.handler.DummyConnectionHandler
+import net.cakemc.library.cluster.tick.TickAble
+import net.cakemc.library.cluster.tick.TickThread
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Represents a cluster node in a distributed system.
  * This class handles the initialization and management of the node's connections,
  * packet handling, and periodic tasks.
  *
- * <p>The BackUpClusterNodeBackUp serves as the main entry point for the node's functionalities
+ *
+ * The BackUpClusterNodeBackUp serves as the main entry point for the node's functionalities
  * including connecting to other nodes, managing network interactions,
- * and processing incoming and outgoing backPackets.</p>
+ * and processing incoming and outgoing backPackets.
  */
-public class BackUpClusterNode extends AbstractBackUpEndpoint implements TickAble {
+class BackUpClusterNode(
+    /** The address of the current node.  */
+    override val ownNode: MemberIdentifier, otherNodes: List<MemberIdentifier>,
+    /** The cluster key used for identification within the cluster.  */
+    val clusterKey: String?
+) :
+    AbstractBackUpEndpoint(), TickAble {
+    /** Thread pool for executing tasks asynchronously.  */
 
-	/** Thread pool for executing tasks asynchronously. */
-	private final ExecutorService executorService;
+    private val executorService: ExecutorService = Executors.newCachedThreadPool()
 
-	/** Unique identifier generator for the node. */
-	private final Snowflake snowflake;
+    /**
+     * Returns the unique identifier generator for the node.
+     *
+     * @return The snowflake instance.
+     */
+    /** Unique identifier generator for the node.  */
+    override val snowflake: Snowflake = Snowflake()
 
-	/** The cluster key used for identification within the cluster. */
-	private final String clusterKey;
+    /**
+     * Returns the cluster key used for identification within the cluster.
+     *
+     * @return The cluster key.
+     */
 
-	/** The address of the current node. */
-	private final MemberIdentifier ownNode;
+    /**
+     * Returns the address of the current node.
+     *
+     * @return The own node's address.
+     */
 
-	/** A map storing other nodes and their corresponding network clients. */
-	private final Map<MemberIdentifier, FallbackFallbackNetworkClient> otherNodes;
+    /** A map storing other nodes and their corresponding network clients.  */
+    override val otherNodes: MutableMap<MemberIdentifier?, FallbackFallbackNetworkClient?> = HashMap()
 
-	/** The server responsible for handling incoming network connections. */
-	private final FallbackFallbackNetworkServer fallbackNetworkServer;
+    /**
+     * Returns the network server instance managing incoming connections.
+     *
+     * @return The network server.
+     */
+    /** The server responsible for handling incoming network connections.  */
+    val networkServer: FallbackFallbackNetworkServer
 
-	/** Manager responsible for handling network connections. */
-	private final AbstractConnectionManager connectionManager;
+    /**
+     * Returns the connection manager responsible for handling network connections.
+     *
+     * @return The connection manager.
+     */
 
-	/** Handler for managing connections and backPackets. */
-	private final DummyConnectionHandler connectionHandler;
+    /** Manager responsible for handling network connections.  */
+    override val connectionManager: AbstractConnectionManager = ConnectionManager(this)
 
-	/** Thread responsible for periodic ticking tasks. */
-	private final TickThread tickThread;
+    /** Handler for managing connections and backPackets.  */
+    private val connectionHandler = DummyConnectionHandler(this)
 
-	/** Unique network identifier for the node. */
-	private final long networkId;
+    /**
+     * Returns the TickThread responsible for managing periodic tasks.
+     *
+     * @return The tick thread instance.
+     */
+    /** Thread responsible for periodic ticking tasks.  */
+    val taskScheduler: TickThread
 
-	/**
-	 * Constructs a new BackUpClusterNodeBackUp with the specified parameters.
-	 *
-	 * @param ownNode     The address of the current node.
-	 * @param otherNodes  A list of other nodes to connect to.
-	 * @param clusterKey  The key for the cluster.
-	 */
-	public BackUpClusterNode(MemberIdentifier ownNode, List<MemberIdentifier> otherNodes, String clusterKey) {
-		this.ownNode = ownNode;
-		this.clusterKey = clusterKey;
-		this.otherNodes = new HashMap<>();
+    /**
+     * Returns the unique network identifier for the node.
+     *
+     * @return The network identifier.
+     */
 
-		this.executorService = Executors.newCachedThreadPool();
-		this.snowflake = new Snowflake();
+    /** Unique network identifier for the node.  */
+    override val networkId: Long = snowflake.nextId()
 
-		this.networkId = snowflake.nextId();
+    /**
+     * Constructs a new BackUpClusterNodeBackUp with the specified parameters.
+     *
+     * @param ownNode     The address of the current node.
+     * @param otherNodes  A list of other nodes to connect to.
+     * @param clusterKey  The key for the cluster.
+     */
+    init {
+        connectionManager.registerPacketHandler(connectionHandler)
 
-		this.connectionManager = new ConnectionManager(this);
-		this.connectionHandler = new DummyConnectionHandler(this);
-		this.connectionManager.registerPacketHandler(connectionHandler);
+        // Initialize connections to other nodes
+        for (otherNode in otherNodes) {
+            if (otherNode.id == ownNode.id) continue
 
-		// Initialize connections to other nodes
-		for (MemberIdentifier otherNode : otherNodes) {
-			if (otherNode.getId() == ownNode.getId())
-				continue;
+            val fallbackNetworkClient = FallbackFallbackNetworkClient(this, otherNode)
+            fallbackNetworkClient.initialize()
 
-			FallbackFallbackNetworkClient fallbackNetworkClient = new FallbackFallbackNetworkClient(this, otherNode);
-			fallbackNetworkClient.initialize();
+            this.otherNodes.put(otherNode, fallbackNetworkClient)
+        }
 
-			this.otherNodes.put(otherNode, fallbackNetworkClient);
-		}
+        this.taskScheduler = TickThread(this)
 
-		this.tickThread = new TickThread(this);
+        this.networkServer = FallbackFallbackNetworkServer(this)
+        networkServer.initialize()
+    }
 
-		this.fallbackNetworkServer = new FallbackFallbackNetworkServer(this);
-		this.fallbackNetworkServer.initialize();
-	}
+    /**
+     * Dispatches a packet to the ring for processing.
+     *
+     * @param packet The packet to be dispatched.
+     */
+    override fun dispatchPacketToRing(packet: Publication?) {
+        connectionHandler.dispatchPacketToRing(packet)
+    }
 
-	/**
-	 * Dispatches a packet to the ring for processing.
-	 *
-	 * @param packet The packet to be dispatched.
-	 */
-	@Override
-	public void dispatchPacketToRing(Publication packet) {
-		connectionHandler.dispatchPacketToRing(packet);
-	}
+    /**
+     * Executes the tick method for each network client and the network server.
+     * This method is called periodically by the TickThread.
+     */
+    override fun tick() {
+        otherNodes.forEach { (nodeInformation: MemberIdentifier?,
+                               fallbackNetworkClient: FallbackFallbackNetworkClient?) -> fallbackNetworkClient?.tick() }
+        networkServer.tick()
+        connectionHandler.tick()
+    }
 
-	/**
-	 * Executes the tick method for each network client and the network server.
-	 * This method is called periodically by the TickThread.
-	 */
-	@Override
-	public void tick() {
-		this.otherNodes.forEach((nodeInformation, fallbackNetworkClient) -> fallbackNetworkClient.tick());
-		this.fallbackNetworkServer.tick();
-		this.connectionHandler.tick();
-	}
+    /**
+     * Starts the BackUpClusterNodeBackUp, initiating the server connection and connecting to other nodes.
+     */
+    override fun start() {
+        val serverThread = Thread(
+            { networkServer.connect() },
+            "network-server-${ownNode.id}"
+        )
+        serverThread.start()
 
-	/**
-	 * Starts the BackUpClusterNodeBackUp, initiating the server connection and connecting to other nodes.
-	 */
-	@Override
-	public void start() {
-		Thread serverThread = new Thread(
-			 this.fallbackNetworkServer::connect,
-			 "network-server-%s".formatted(this.getOwnNode().getId())
-		);
-		serverThread.start();
-
-		// Connect to other nodes using the executor service
-		this.otherNodes.forEach((nodeInformation, fallbackNetworkClient) -> {
-			executorService.submit(fallbackNetworkClient::connect);
-		});
-	}
-
-	/**
-	 * Returns the address of the current node.
-	 *
-	 * @return The own node's address.
-	 */
-	@Override
-	public MemberIdentifier getOwnNode() {
-		return ownNode;
-	}
-
-	/**
-	 * Returns a map of other nodes and their corresponding network clients.
-	 *
-	 * @return A map of other nodes.
-	 */
-	@Override
-	public Map<MemberIdentifier, FallbackFallbackNetworkClient> getOtherNodes() {
-		return otherNodes;
-	}
-
-	/**
-	 * Returns the TickThread responsible for managing periodic tasks.
-	 *
-	 * @return The tick thread instance.
-	 */
-	public TickThread getTaskScheduler() {
-		return tickThread;
-	}
-
-	/**
-	 * Returns the network server instance managing incoming connections.
-	 *
-	 * @return The network server.
-	 */
-	public FallbackFallbackNetworkServer getNetworkServer() {
-		return fallbackNetworkServer;
-	}
-
-	/**
-	 * Returns the connection manager responsible for handling network connections.
-	 *
-	 * @return The connection manager.
-	 */
-	@Override
-	public AbstractConnectionManager getConnectionManager() {
-		return connectionManager;
-	}
-
-	/**
-	 * Returns the unique identifier generator for the node.
-	 *
-	 * @return The snowflake instance.
-	 */
-	@Override
-	public Snowflake getSnowflake() {
-		return snowflake;
-	}
-
-	/**
-	 * Returns the unique network identifier for the node.
-	 *
-	 * @return The network identifier.
-	 */
-	@Override
-	public long getNetworkId() {
-		return networkId;
-	}
-
-	/**
-	 * Returns the cluster key used for identification within the cluster.
-	 *
-	 * @return The cluster key.
-	 */
-	public String getClusterKey() {
-		return clusterKey;
-	}
+        // Connect to other nodes using the executor service
+        otherNodes.forEach { (nodeInformation: MemberIdentifier?, fallbackNetworkClient: FallbackFallbackNetworkClient?) ->
+            executorService.submit { fallbackNetworkClient?.connect() }
+        }
+    }
 
 }

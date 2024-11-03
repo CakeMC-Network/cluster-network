@@ -1,78 +1,73 @@
-package net.cakemc.library.cluster.api;
+package net.cakemc.library.cluster.api
 
-import net.cakemc.library.cluster.address.ClusterAddress;
+import net.cakemc.library.cluster.address.ClusterAddress
 
 /**
- * The {@code MemberIdentifier} class represents a member in a cluster, identified by a unique ID and associated
- * with a {@link ClusterAddress}. This class provides utility methods for creating member identifiers and accessing
+ * The `MemberIdentifier` class represents a member in a cluster, identified by a unique ID and associated
+ * with a [ClusterAddress]. This class provides utility methods for creating member identifiers and accessing
  * their respective IDs and addresses.
  */
-public class MemberIdentifier {
+class MemberIdentifier {
+    /**
+     * Returns the unique ID of the member.
+     *
+     * @return the unique ID of the member.
+     */
+    val id: Short
 
-	private final short id;
-	private final ClusterAddress address;
+    /**
+     * Returns the [ClusterAddress] of the member.
+     *
+     * @return the [ClusterAddress] of the member.
+     */
+    val address: ClusterAddress
 
-	/**
-	 * Constructs a {@code MemberIdentifier} with the specified ID and {@link ClusterAddress}.
-	 *
-	 * @param id      the unique ID of the member.
-	 * @param address the {@link ClusterAddress} of the member.
-	 */
-	public MemberIdentifier(int id, ClusterAddress address) {
-		this.id = (short) id;
-		this.address = address;
-	}
+    /**
+     * Constructs a `MemberIdentifier` with the specified ID and [ClusterAddress].
+     *
+     * @param id      the unique ID of the member.
+     * @param address the [ClusterAddress] of the member.
+     */
+    constructor(id: Int, address: ClusterAddress) {
+        this.id = id.toShort()
+        this.address = address
+    }
 
-	/**
-	 * Constructs a {@code MemberIdentifier} with the specified ID, host, and port.
-	 *
-	 * @param id    the unique ID of the member.
-	 * @param host  the host address of the member.
-	 * @param port  the port number of the member.
-	 */
-	MemberIdentifier(int id, String host, int port) {
-		this.id = (short) id;
-		this.address = new ClusterAddress(host, port);
-	}
+    /**
+     * Constructs a `MemberIdentifier` with the specified ID, host, and port.
+     *
+     * @param id    the unique ID of the member.
+     * @param host  the host address of the member.
+     * @param port  the port number of the member.
+     */
+    internal constructor(id: Int, host: String, port: Int) {
+        this.id = id.toShort()
+        this.address = ClusterAddress(host, port)
+    }
 
-	/**
-	 * Creates a new {@code MemberIdentifier} with the specified ID, host, and port.
-	 *
-	 * @param id    the unique ID of the member.
-	 * @param host  the host address of the member.
-	 * @param port  the port number of the member.
-	 * @return a new {@code MemberIdentifier} with the given ID, host, and port.
-	 */
-	public static MemberIdentifier of(int id, String host, int port) {
-		return new MemberIdentifier(id, host, port);
-	}
+    companion object {
+        /**
+         * Creates a new `MemberIdentifier` with the specified ID, host, and port.
+         *
+         * @param id    the unique ID of the member.
+         * @param host  the host address of the member.
+         * @param port  the port number of the member.
+         * @return a new `MemberIdentifier` with the given ID, host, and port.
+         */
+        @kotlin.jvm.JvmStatic
+        fun of(id: Int, host: String, port: Int): MemberIdentifier {
+            return MemberIdentifier(id, host, port)
+        }
 
-	/**
-	 * Creates a new {@code MemberIdentifier} with the specified ID and {@link ClusterAddress}.
-	 *
-	 * @param id      the unique ID of the member.
-	 * @param address the {@link ClusterAddress} of the member.
-	 * @return a new {@code MemberIdentifier} with the given ID and address.
-	 */
-	public static MemberIdentifier of(int id, ClusterAddress address) {
-		return new MemberIdentifier(id, address);
-	}
-
-	/**
-	 * Returns the unique ID of the member.
-	 *
-	 * @return the unique ID of the member.
-	 */
-	public short getId() {
-		return id;
-	}
-
-	/**
-	 * Returns the {@link ClusterAddress} of the member.
-	 *
-	 * @return the {@link ClusterAddress} of the member.
-	 */
-	public ClusterAddress getAddress() {
-		return address;
-	}
+        /**
+         * Creates a new `MemberIdentifier` with the specified ID and [ClusterAddress].
+         *
+         * @param id      the unique ID of the member.
+         * @param address the [ClusterAddress] of the member.
+         * @return a new `MemberIdentifier` with the given ID and address.
+         */
+        fun of(id: Int, address: ClusterAddress): MemberIdentifier {
+            return MemberIdentifier(id, address)
+        }
+    }
 }

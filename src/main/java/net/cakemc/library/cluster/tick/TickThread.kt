@@ -1,75 +1,73 @@
-package net.cakemc.library.cluster.tick;
+package net.cakemc.library.cluster.tick
+
+import net.cakemc.library.cluster.tick.TickAble
 
 /**
- * A thread that periodically calls the tick method of a {@link TickAble} instance.
+ * A thread that periodically calls the tick method of a [TickAble] instance.
  * The tick method is executed at a fixed rate, defined by the TICK_RATE constant.
  * This is useful for tasks that need to be updated regularly in a separate thread.
  */
-public class TickThread implements Runnable {
+class TickThread(
+    /** The object that will be ticked.  */
+    private val tickAble: TickAble
+) : Runnable {
+    /** The thread that runs the tick loop.  */
+    private val tickThread = Thread(this)
 
-	/** The rate at which to tick, in milliseconds. */
-	static final int TICK_RATE = 50;
+    /** Indicates whether the tick thread is running.  */
+    private var running = true
 
-	/** The object that will be ticked. */
-	private final TickAble tickAble;
+    /**
+     * Creates a new TickThread for the given [TickAble] instance.
+     *
+     * @param tickAble The instance to be ticked periodically.
+     */
+    init {
+        tickThread.priority = Thread.NORM_PRIORITY
+        tickThread.name = "tick-thread"
+        tickThread.isDaemon = true
+        tickThread.start()
+    }
 
-	/** The thread that runs the tick loop. */
-	private final Thread tickThread;
+    /**
+     * The main loop of the tick thread.
+     * It repeatedly calls the tick method of the TickAble instance at a fixed rate.
+     */
+    override fun run() {
+        while (running) {
+            val start = System.currentTimeMillis()
 
-	/** Indicates whether the tick thread is running. */
-	private boolean running;
+            tickAble.tick()
 
-	/**
-	 * Creates a new TickThread for the given {@link TickAble} instance.
-	 *
-	 * @param tickAble The instance to be ticked periodically.
-	 */
-	public TickThread(TickAble tickAble) {
-		this.tickAble = tickAble;
-		running = true;
+            val end = System.currentTimeMillis()
+            val duration = end - start
 
-		tickThread = new Thread(this);
-		tickThread.setPriority(Thread.NORM_PRIORITY);
-		tickThread.setName("tick-thread");
-		tickThread.setDaemon(true);
-		tickThread.start();
-	}
+            // Sleep for the remaining time to maintain the tick rate.
+            if (duration < TICK_RATE) {
+                try {
+                    Thread.sleep(TICK_RATE - duration)
+                } catch (ignored: InterruptedException) {
+                    // Thread was interrupted, can safely ignore and exit.
+                }
+            }
+        }
+    }
 
-	/**
-	 * The main loop of the tick thread.
-	 * It repeatedly calls the tick method of the TickAble instance at a fixed rate.
-	 */
-	@Override
-	public void run() {
-		while (running) {
-			long start = System.currentTimeMillis();
+    /**
+     * Shuts down the tick thread, stopping the periodic ticking.
+     * This method should be called to cleanly terminate the thread.
+     */
+    fun shutdown() {
+        this.running = false
 
-			tickAble.tick();
+        // Interrupt the thread if it is still running.
+        if (!tickThread.isInterrupted) {
+            tickThread.interrupt()
+        }
+    }
 
-			long end = System.currentTimeMillis();
-			long duration = end - start;
-
-			// Sleep for the remaining time to maintain the tick rate.
-			if (duration < TICK_RATE) {
-				try {
-					Thread.sleep(TICK_RATE - duration);
-				} catch (InterruptedException ignored) {
-					// Thread was interrupted, can safely ignore and exit.
-				}
-			}
-		}
-	}
-
-	/**
-	 * Shuts down the tick thread, stopping the periodic ticking.
-	 * This method should be called to cleanly terminate the thread.
-	 */
-	public void shutdown() {
-		this.running = false;
-
-		// Interrupt the thread if it is still running.
-		if (!tickThread.isInterrupted()) {
-			tickThread.interrupt();
-		}
-	}
+    companion object {
+        /** The rate at which to tick, in milliseconds.  */
+        const val TICK_RATE: Int = 50
+    }
 }

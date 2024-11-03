@@ -1,194 +1,202 @@
-package net.cakemc.library.cluster.fallback.endpoint;
+package net.cakemc.library.cluster.fallback.endpoint
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.*;
-import io.netty.channel.epoll.EpollIoHandler;
-import io.netty.channel.epoll.EpollSocketChannel;
-import io.netty.channel.kqueue.KQueueIoHandler;
-import io.netty.channel.kqueue.KQueueSocketChannel;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import net.cakemc.library.cluster.api.MemberIdentifier;
-import net.cakemc.library.cluster.codec.Publication;
-import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
-import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec;
-import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec;
-import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import io.netty.bootstrap.Bootstrap
+import io.netty.buffer.ByteBufAllocator
+import io.netty.buffer.PooledByteBufAllocator
+import io.netty.channel.*
+import io.netty.channel.epoll.EpollIoHandler
+import io.netty.channel.epoll.EpollSocketChannel
+import io.netty.channel.kqueue.KQueueIoHandler
+import io.netty.channel.kqueue.KQueueSocketChannel
+import io.netty.channel.nio.NioIoHandler
+import io.netty.channel.socket.SocketChannel
+import io.netty.channel.socket.nio.NioSocketChannel
+import net.cakemc.library.cluster.api.MemberIdentifier
+import net.cakemc.library.cluster.codec.*
+import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint
+import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec
+import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec
+import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
 
 /**
  * Represents a network client in the cluster that connects to server nodes.
  *
- * <p>The {@code FallbackFallbackNetworkClient} class extends {@code FallbackNetworkPoint} to implement
+ *
+ * The `FallbackFallbackNetworkClient` class extends `FallbackNetworkPoint` to implement
  * client-specific behavior for establishing connections, sending backPackets, and
- * handling reconnections in case of failures.</p>
+ * handling reconnections in case of failures.
  *
  * @see FallbackNetworkPoint
+ *
  * @see Publication
  */
-public class FallbackFallbackNetworkClient extends FallbackNetworkPoint {
+class FallbackFallbackNetworkClient
+/**
+ * Constructs a new `FallbackFallbackNetworkClient` with the specified cluster node and
+ * node information.
+ *
+ * @param clusterNode the [AbstractBackUpEndpoint] representing the cluster node
+ * @param nodeInformation the [MemberIdentifier] containing address details
+ */
+    (clusterNode: AbstractBackUpEndpoint, nodeInformation: MemberIdentifier) :
+    FallbackNetworkPoint(clusterNode, nodeInformation) {
+    // Configuration
+    private var eventLoopGroup: EventLoopGroup? = null
+    private var channel: Class<out SocketChannel>? = null
+    private var channelFuture: ChannelFuture? = null
 
-	/**
-	 * Timeout duration (in milliseconds) for retrying to connect to the server.
-	 */
-	public static final long RETRY_TIMEOUT = 5000;
+    // Reconnection state
+    private var reconnecting = false
+    private var lastAttemptTime: Long = 0
+    private var awaitFirstStart = true
 
-	// Configuration
-	private EventLoopGroup eventLoopGroup;
-	private Class<? extends SocketChannel> channel;
-	private ChannelFuture channelFuture;
+    /**
+     * Initializes the network client by setting up the event loop group and channel type
+     * based on the available I/O model.
+     */
+    override fun initialize() {
+        val ioHandlerFactory =
+            if (FallbackNetworkPoint.Companion.EPOLL) (if (FallbackNetworkPoint.Companion.KQUEUE) KQueueIoHandler.newFactory() else EpollIoHandler.newFactory()) else NioIoHandler.newFactory()
 
-	// Reconnection state
-	private boolean reconnecting;
-	private long lastAttemptTime;
-	private boolean awaitFirstStart = true;
+        this.eventLoopGroup = MultiThreadIoEventLoopGroup(2, ioHandlerFactory)
+        this.channel =
+            if (FallbackNetworkPoint.Companion.EPOLL) (if (FallbackNetworkPoint.Companion.KQUEUE) KQueueSocketChannel::class.java else EpollSocketChannel::class.java) else NioSocketChannel::class.java
+    }
 
-	/**
-	 * Constructs a new {@code FallbackFallbackNetworkClient} with the specified cluster node and
-	 * node information.
-	 *
-	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
-	 * @param nodeInformation the {@link MemberIdentifier} containing address details
-	 */
-	public FallbackFallbackNetworkClient(AbstractBackUpEndpoint clusterNode, MemberIdentifier nodeInformation) {
-		super(clusterNode, nodeInformation);
-	}
+    /**
+     * Establishes a connection to the server using the specified host and port.
+     *
+     *
+     * If the connection attempt fails, it enters a reconnecting state that will
+     * periodically attempt to reconnect based on the configured timeout.
+     */
+    override fun connect() {
+        this.awaitFirstStart = false
+        if (this.checkAvailable(this.host, this.port)) {
+            this.reconnecting = true
+            lastAttemptTime = System.currentTimeMillis()
+        }
+        try {
+            // Set up the client bootstrap
+            this.channelFuture = Bootstrap()
+                .channel(channel)
+                .option(ChannelOption.IP_TOS, 24)
+                .option(ChannelOption.TCP_NODELAY, true)
+                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+                .option(ChannelOption.SO_REUSEADDR, true)
+                .group(eventLoopGroup)
+                .handler(object : ChannelInitializer<Channel>() {
+                    @Throws(Exception::class)
+                    override fun initChannel(channel: Channel) {
+                        val channelPipeline = channel.pipeline()
+                        channelPipeline.addFirst(COMPRESSION_CODEC, CompressionCodec())
+                        channelPipeline.addAfter(
+                            COMPRESSION_CODEC,
+                            PACKET_CODEC,
+                            PublicationCodec()
+                        )
+                        channelPipeline.addAfter(
+                            PACKET_CODEC,
+                            BOSS_HANDLER,
+                            BossHandler(clusterNode, EndpointType.CLIENT)
+                        )
+                    }
+                })
+                .remoteAddress(host, port)
+                .connect()
+                .addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
+                .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
+                .addListener(ChannelFutureListener { channelFuture: ChannelFuture ->
+                    if (channelFuture.isSuccess) {
+                        this.isConnected = true
+                        this.reconnecting = false
+                    } else {
+                        this.isConnected = false
+                        this.reconnecting = true
+                        lastAttemptTime = System.currentTimeMillis()
+                    }
+                })
+                .syncUninterruptibly()
 
-	/**
-	 * Initializes the network client by setting up the event loop group and channel type
-	 * based on the available I/O model.
-	 */
-	@Override
-	public void initialize() {
-		IoHandlerFactory ioHandlerFactory = EPOLL ? (KQUEUE ? KQueueIoHandler.newFactory() : EpollIoHandler.newFactory()) : NioIoHandler.newFactory();
+            channelFuture!!.channel().closeFuture().sync()
+        } catch (e: InterruptedException) {
+            this.reconnecting = true
+            lastAttemptTime = System.currentTimeMillis()
+        }
+    }
 
-		this.eventLoopGroup = new MultiThreadIoEventLoopGroup(2, ioHandlerFactory);
-		this.channel = EPOLL ? (KQUEUE ? KQueueSocketChannel.class : EpollSocketChannel.class) : NioSocketChannel.class;
-	}
+    /**
+     * Dispatches a packet to the connected server.
+     *
+     *
+     * If the connection is not active, this method does nothing.
+     *
+     * @param packet the [Publication] to be dispatched
+     */
+    override fun dispatchPacket(packet: Publication?) {
+        super.dispatchPacket(packet)
 
-	/**
-	 * Establishes a connection to the server using the specified host and port.
-	 *
-	 * <p>If the connection attempt fails, it enters a reconnecting state that will
-	 * periodically attempt to reconnect based on the configured timeout.</p>
-	 */
-	@Override
-	public void connect() {
-		this.awaitFirstStart = false;
-		if (this.checkAvailable(this.host, this.port)) {
-			this.reconnecting = true;
-			lastAttemptTime = System.currentTimeMillis();
-		}
-		try {
-			// Set up the client bootstrap
-			this.channelFuture = new Bootstrap()
-				 .channel(channel)
-				 .option(ChannelOption.IP_TOS, 24)
-				 .option(ChannelOption.TCP_NODELAY, true)
-				 .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-				 .option(ChannelOption.SO_REUSEADDR, true)
-				 .group(eventLoopGroup)
-				 .handler(new ChannelInitializer<>() {
-					 @Override
-					 protected void initChannel(Channel channel) throws Exception {
-						 ChannelPipeline channelPipeline = channel.pipeline();
-						 channelPipeline.addFirst(COMPRESSION_CODEC, new CompressionCodec());
-						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new PublicationCodec());
-						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new BossHandler(clusterNode, EndpointType.CLIENT));
-					 }
-				 })
-				 .remoteAddress(host, port)
-				 .connect()
-				 .addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
-				 .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
-				 .addListener((ChannelFutureListener) channelFuture -> {
-					 if (channelFuture.isSuccess()) {
-						 this.connected = true;
-						 this.reconnecting = false;
-					 } else {
-						 this.connected = false;
-						 this.reconnecting = true;
-						 lastAttemptTime = System.currentTimeMillis();
-					 }
-				 })
-				 .syncUninterruptibly();
+        if (channelFuture == null || !channelFuture!!.channel().isActive) return
 
-			this.channelFuture.channel().closeFuture().sync();
-		} catch (InterruptedException e) {
-			this.reconnecting = true;
-			lastAttemptTime = System.currentTimeMillis();
-		}
-	}
+        channelFuture!!.channel().writeAndFlush(packet)
+            .addListener(ChannelFutureListener { channelFuture: ChannelFuture ->
+                if (!channelFuture.isSuccess && channelFuture.cause() != null) channelFuture.cause().printStackTrace()
+            })
+    }
 
-	/**
-	 * Dispatches a packet to the connected server.
-	 *
-	 * <p>If the connection is not active, this method does nothing.</p>
-	 *
-	 * @param packet the {@link Publication} to be dispatched
-	 */
-	@Override
-	public void dispatchPacket(Publication packet) {
-		super.dispatchPacket(packet);
+    /**
+     * Executes periodic tasks, including reconnecting if the client is not connected.
+     */
+    override fun tick() {
+        if (!isConnected && !reconnecting) {
+            // Start reconnect attempt
+            this.reconnecting = true
+            lastAttemptTime = System.currentTimeMillis()
+        }
 
-		if (channelFuture == null || !channelFuture.channel().isActive())
-			return;
+        if (reconnecting && System.currentTimeMillis() - lastAttemptTime > RETRY_TIMEOUT && !awaitFirstStart) {
+            connect()
+        }
+    }
 
-		channelFuture.channel().writeAndFlush(packet)
-		             .addListener((ChannelFutureListener) channelFuture -> {
-			             if (!channelFuture.isSuccess() && channelFuture.cause() != null)
-				             channelFuture.cause().printStackTrace();
-		             });
-	}
+    /**
+     * Checks the availability of a host and port by attempting to connect.
+     *
+     * @param host the host address to check
+     * @param port the port number to check
+     * @return `true` if the host and port are available, `false` otherwise
+     */
+    fun checkAvailable(host: String, port: Int): Boolean {
+        try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), 1000)
+                return true
+            }
+        } catch (e: IOException) {
+            return false
+        }
+    }
 
-	/**
-	 * Executes periodic tasks, including reconnecting if the client is not connected.
-	 */
-	@Override
-	public void tick() {
-		if (!connected && !reconnecting) {
-			// Start reconnect attempt
-			this.reconnecting = true;
-			lastAttemptTime = System.currentTimeMillis();
-		}
+    /**
+     * Shuts down the network client, releasing any resources and connections.
+     */
+    override fun shutdown() {
+        if (this.channelFuture != null) {
+            channelFuture!!.channel().close().syncUninterruptibly()
+        }
+        if (this.eventLoopGroup != null) {
+            eventLoopGroup!!.shutdownGracefully().syncUninterruptibly()
+        }
+        this.isConnected = false
+    }
 
-		if (reconnecting && System.currentTimeMillis() - lastAttemptTime > RETRY_TIMEOUT && !awaitFirstStart) {
-			connect();
-		}
-	}
-
-	/**
-	 * Checks the availability of a host and port by attempting to connect.
-	 *
-	 * @param host the host address to check
-	 * @param port the port number to check
-	 * @return {@code true} if the host and port are available, {@code false} otherwise
-	 */
-	boolean checkAvailable(String host, int port) {
-		try (Socket socket = new Socket()) {
-			socket.connect(new InetSocketAddress(host, port), 1000);
-			return true;
-		} catch (IOException e) {
-			return false;
-		}
-	}
-
-	/**
-	 * Shuts down the network client, releasing any resources and connections.
-	 */
-	@Override
-	public void shutdown() {
-		if (this.channelFuture != null) {
-			this.channelFuture.channel().close().syncUninterruptibly();
-		}
-		if (this.eventLoopGroup != null) {
-			this.eventLoopGroup.shutdownGracefully().syncUninterruptibly();
-		}
-		this.connected = false;
-	}
+    companion object {
+        /**
+         * Timeout duration (in milliseconds) for retrying to connect to the server.
+         */
+        const val RETRY_TIMEOUT: Long = 5000
+    }
 }

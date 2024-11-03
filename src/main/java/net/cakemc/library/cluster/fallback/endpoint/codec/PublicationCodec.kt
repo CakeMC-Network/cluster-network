@@ -1,92 +1,88 @@
-package net.cakemc.library.cluster.fallback.endpoint.codec;
+package net.cakemc.library.cluster.fallback.endpoint.codec
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageCodec;
-import net.cakemc.library.cluster.codec.ClusterPublication;
-import net.cakemc.library.cluster.codec.Publication;
-
-import java.lang.invoke.MethodHandles;
-import java.util.List;
+import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandlerContext
+import io.netty.handler.codec.ByteToMessageCodec
+import net.cakemc.library.cluster.codec.*
+import java.lang.invoke.MethodHandles
 
 /**
- * A codec that encodes and decodes {@link Publication} objects for network transmission.
+ * A codec that encodes and decodes [Publication] objects for network transmission.
  *
  * <h2>Encoding</h2>
- * <p>When encoding a packet, this codec writes the packet's ID followed by its data to
- * the provided {@link ByteBuf}.</p>
+ *
+ * When encoding a packet, this codec writes the packet's ID followed by its data to
+ * the provided [ByteBuf].
  *
  * <h2>Decoding</h2>
- * <p>During decoding, the codec reads the packet ID from the byte buffer, retrieves the
- * corresponding packet class from the packet registry, and reads the data into a packet object.</p>
+ *
+ * During decoding, the codec reads the packet ID from the byte buffer, retrieves the
+ * corresponding packet class from the packet registry, and reads the data into a packet object.
  *
  * <h2>Example Usage</h2>
  * <pre>
- * {@code
- * ChannelPipeline pipeline = channel.pipeline();
+ * `ChannelPipeline pipeline = channel.pipeline();
  * pipeline.addLast(new PublicationCodec(packetRegistry));
  * // Other handlers...
- * }
- * </pre>
+` *
+</pre> *
  *
  * @see ByteToMessageCodec
+ *
  * @see Publication
  */
-public class PublicationCodec extends ByteToMessageCodec<Publication> {
+class PublicationCodec : ByteToMessageCodec<Publication>() {
+    init {
+        publicationType = ClusterPublication::class.java
+    }
 
-	public static Class<? extends Publication> publicationType;
+    /**
+     * Encodes the specified [Publication] into the given [ByteBuf].
+     *
+     *
+     * This method writes the backPacket's ID followed by its serialized data to the byte buffer.
+     *
+     * @param channelHandlerContext the [ChannelHandlerContext] which this `PublicationCodec` belongs to
+     * @param backPacket            the [Publication] to encode
+     * @param byteBuf               the [ByteBuf] where the encoded backPacket data will be written
+     */
+    override fun encode(channelHandlerContext: ChannelHandlerContext, backPacket: Publication, byteBuf: ByteBuf) {
+        backPacket.serialize(byteBuf)
+    }
 
-	public PublicationCodec() {
-		publicationType = ClusterPublication.class;
-	}
+    /**
+     * Decodes the incoming data from the specified [ByteBuf] into a [Publication].
+     *
+     *
+     * This method reads the packet ID from the byte buffer, retrieves the corresponding
+     * packet class from the packet registry, and populates the packet with data read from
+     * the byte buffer.
+     *
+     * @param channelHandlerContext the [ChannelHandlerContext] which this `PublicationCodec` belongs to
+     * @param byteBuf               the incoming [ByteBuf] containing the encoded packet data
+     * @param list                  the list where the decoded packet will be added
+     *
+     * @throws Exception if an error occurs during decoding
+     */
+    @Throws(Exception::class)
+    override fun decode(channelHandlerContext: ChannelHandlerContext, byteBuf: ByteBuf, list: MutableList<Any>) {
+        checkNotNull(publicationType) { "unable to construct incoming publication clusterPublicationClass is null!" }
 
-	/**
-	 * Encodes the specified {@link Publication} into the given {@link ByteBuf}.
-	 *
-	 * <p>This method writes the backPacket's ID followed by its serialized data to the byte buffer.</p>
-	 *
-	 * @param channelHandlerContext the {@link ChannelHandlerContext} which this {@code PublicationCodec} belongs to
-	 * @param backPacket            the {@link Publication} to encode
-	 * @param byteBuf               the {@link ByteBuf} where the encoded backPacket data will be written
-	 *
-	 */
-	@Override
-	protected void encode(ChannelHandlerContext channelHandlerContext, Publication backPacket, ByteBuf byteBuf) {
-		backPacket.serialize(byteBuf);
-	}
+        try {
+            val publication = MethodHandles
+                .privateLookupIn(publicationType, MethodHandles.publicLookup())
+                .unreflectConstructor(publicationType!!.getDeclaredConstructor())
+                .invokeExact() as Publication
 
-	/**
-	 * Decodes the incoming data from the specified {@link ByteBuf} into a {@link Publication}.
-	 *
-	 * <p>This method reads the packet ID from the byte buffer, retrieves the corresponding
-	 * packet class from the packet registry, and populates the packet with data read from
-	 * the byte buffer.</p>
-	 *
-	 * @param channelHandlerContext the {@link ChannelHandlerContext} which this {@code PublicationCodec} belongs to
-	 * @param byteBuf               the incoming {@link ByteBuf} containing the encoded packet data
-	 * @param list                  the list where the decoded packet will be added
-	 *
-	 * @throws Exception if an error occurs during decoding
-	 */
-	@Override
-	protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) throws Exception {
-		if (publicationType == null) {
-			throw new IllegalStateException("unable to construct incoming publication clusterPublicationClass is null!");
-		}
+            publication.deserialize(byteBuf)
 
-		try {
-			Publication publication = (Publication) MethodHandles
-				 .privateLookupIn(publicationType, MethodHandles.publicLookup())
-				 .unreflectConstructor(publicationType.getDeclaredConstructor())
-				 .invokeExact();
+            list.add(publication)
+        } catch (e: Throwable) {
+            throw RuntimeException(e)
+        }
+    }
 
-			publication.deserialize(byteBuf);
-
-			list.add(publication);
-		} catch (Throwable e) {
-			throw new RuntimeException(e);
-		}
-
-	}
-
+    companion object {
+        var publicationType: Class<out Publication>? = null
+    }
 }

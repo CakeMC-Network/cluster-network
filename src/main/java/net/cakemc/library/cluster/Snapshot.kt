@@ -1,17 +1,17 @@
-package net.cakemc.library.cluster;
+package net.cakemc.library.cluster
 
-import java.util.List;
+import net.cakemc.library.cluster.address.ClusterIdRegistry
 
-public abstract class Snapshot {
-	public abstract ClusterMember getById(short id, int memberCheck);
+abstract class Snapshot {
+    abstract fun getById(id: Short, memberCheck: Int): ClusterMember?
 
-	public abstract short[] getValidClusterIDs();
+    abstract val validClusterIDs: ClusterIdRegistry?
 
-	public abstract short[] getInValidClusterIDs();
+    abstract val inValidClusterIDs: ClusterIdRegistry?
 
-	public abstract List<ClusterMember> getValidCluster();
+    abstract val validCluster: List<ClusterMember?>
 
-	public abstract List<ClusterMember> getAliveCluster();
+    abstract val aliveCluster: List<ClusterMember?>
 
-	public abstract List<ClusterMember> getCluster();
+    abstract val cluster: List<ClusterMember?>?
 }

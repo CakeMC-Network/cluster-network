@@ -1,138 +1,106 @@
-package net.cakemc.library.cluster.api;
+package net.cakemc.library.cluster.api
 
-import io.netty.buffer.ByteBuf;
-import net.cakemc.library.cluster.codec.Publication;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import io.netty.buffer.ByteBuf
+import net.cakemc.library.cluster.codec.*
+import java.nio.charset.StandardCharsets
 
 /**
- * The {@code SoftPublication} class represents a publication within a ring-back packet communication system.
- * This class implements the {@link Publication} interface,
+ * The `SoftPublication` class represents a publication within a ring-back packet communication system.
+ * This class implements the [Publication] interface,
  * enabling it to represent and handle a publish-subscribe style message with a channel, data, and version information.
  */
-public class SoftPublication implements Publication {
+class SoftPublication : Publication {
+    /**
+     * Retrieves the publication channel name.
+     *
+     * @return the channel name.
+     */
+    override var channel: String? = null
 
-	private String channel;
-	private byte[] data;
-	private int version;
+    /**
+     * Retrieves the publication data.
+     *
+     * @return the data as a byte array.
+     */
+    var data: ByteArray? = null
+      private set
 
-	/**
-	 * Default constructor for creating an empty {@code SoftPublication} instance.
-	 */
-	public SoftPublication() {
-	}
+  override var version: Long = 0
 
-	/**
-	 * Constructs a {@code SoftPublication} instance with the specified packet details and publication data.
-	 *
-	 * @param channel the publication channel name.
-	 * @param data    the data being published as a byte array.
-	 * @param version the version of the publication.
-	 */
-	public SoftPublication(
-		 String channel, byte[] data,
-		 int version
-	) {
-		this.channel = channel;
-		this.data = data;
-		this.version = version;
-	}
+    /**
+     * Default constructor for creating an empty `SoftPublication` instance.
+     */
+    constructor()
 
-	/**
-	 * Retrieves the key associated with this publication, which is the channel name.
-	 *
-	 * @return the channel name as the key.
-	 */
-	@Override
-	public String getKey() {
-		return channel;
-	}
+    /**
+     * Constructs a `SoftPublication` instance with the specified packet details and publication data.
+     *
+     * @param channel the publication channel name.
+     * @param data    the data being published as a byte array.
+     * @param version the version of the publication.
+     */
+    constructor(
+        channel: String?, data: ByteArray?,
+        version: Long
+    ) {
+        this.channel = channel
+        this.data = data
+        this.version = version
+    }
 
-	/**
-	 * Retrieves the version of the publication.
-	 *
-	 * @return the publication version.
-	 */
-	@Override
-	public long getVersion() {
-		return version;
-	}
+    override val key: String
+        /**
+         * Retrieves the key associated with this publication, which is the channel name.
+         *
+         * @return the channel name as the key.
+         */
+        get() = channel!!
 
-	/**
-	 * Closes the publication by clearing the data and channel references.
-	 */
-	@Override
-	public void close() {
-		this.data = null;
-		this.channel = null;
-	}
+    /**
+     * Closes the publication by clearing the data and channel references.
+     */
+    override fun close() {
+        this.data = null
+        this.channel = null
+    }
 
-	/**
-	 * Configures the publication using the provided configuration map.
-	 * This method does not currently perform any operations.
-	 *
-	 * @param config the configuration map.
-	 */
-	@Override
-	public void configure(Map<String, ?> config) {}
+    /**
+     * Configures the publication using the provided configuration map.
+     * This method does not currently perform any operations.
+     *
+     * @param config the configuration map.
+     */
+    override fun configure(config: Map<String?, *>?) {}
 
-	/**
-	 * Writes the publication data into the provided {@link ByteBuf}.
-	 *
-	 * @param byteBuf the {@link ByteBuf} to write the publication data into.
-	 */
-	@Override
-	public void serialize(ByteBuf byteBuf) {
-		byteBuf.writeInt(version);
+    /**
+     * Writes the publication data into the provided [ByteBuf].
+     *
+     * @param byteBuf the [ByteBuf] to write the publication data into.
+     */
+    override fun serialize(byteBuf: ByteBuf) {
+        byteBuf.writeLong(version)
 
-		byteBuf.writeInt(this.channel.length());
-		byteBuf.writeBytes(this.channel.getBytes(StandardCharsets.UTF_8));
+        byteBuf.writeInt(channel!!.length)
+        byteBuf.writeBytes(channel!!.toByteArray(StandardCharsets.UTF_8))
 
-		byteBuf.writeInt(this.data.length);
-		byteBuf.writeBytes(this.data);
-	}
+        byteBuf.writeInt(data!!.size)
+        byteBuf.writeBytes(this.data)
+    }
 
-	/**
-	 * Reads the publication data from the provided {@link ByteBuf}.
-	 *
-	 * @param byteBuf the {@link ByteBuf} containing the serialized publication data.
-	 */
-	@Override
-	public void deserialize(ByteBuf byteBuf) {
-		this.version = byteBuf.readInt();
+    /**
+     * Reads the publication data from the provided [ByteBuf].
+     *
+     * @param byteBuf the [ByteBuf] containing the serialized publication data.
+     */
+    override fun deserialize(byteBuf: ByteBuf) {
+        this.version = byteBuf.readLong()
 
-		byte[] channel = new byte[byteBuf.readInt()];
-		byteBuf.readBytes(channel);
-		this.channel = new String(channel);
+        val channel = ByteArray(byteBuf.readInt())
+        byteBuf.readBytes(channel)
+        this.channel = String(channel)
 
-		byte[] data = new byte[byteBuf.readInt()];
-		byteBuf.readBytes(data);
-		this.data = data;
-	}
-
-
-	/**
-	 * Retrieves the publication channel name.
-	 *
-	 * @return the channel name.
-	 */
-	@Override
-	public String getChannel() {
-		return channel;
-	}
-
-	@Override public void setChannel(String channel) {
-		this.channel = channel;
-	}
-
-	/**
-	 * Retrieves the publication data.
-	 *
-	 * @return the data as a byte array.
-	 */
-	public byte[] getData() {
-		return data;
-	}
-
+        val data = ByteArray(byteBuf.readInt())
+        byteBuf.readBytes(data)
+        this.data = data
+    }
 }

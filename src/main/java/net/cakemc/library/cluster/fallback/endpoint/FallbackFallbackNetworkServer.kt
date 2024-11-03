@@ -1,173 +1,167 @@
-package net.cakemc.library.cluster.fallback.endpoint;
+package net.cakemc.library.cluster.fallback.endpoint
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.*;
-import io.netty.channel.epoll.EpollIoHandler;
-import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.kqueue.KQueueIoHandler;
-import io.netty.channel.kqueue.KQueueServerSocketChannel;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint;
-import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec;
-import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec;
-import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler;
+import io.netty.bootstrap.ServerBootstrap
+import io.netty.buffer.ByteBufAllocator
+import io.netty.buffer.PooledByteBufAllocator
+import io.netty.channel.*
+import io.netty.channel.epoll.EpollIoHandler
+import io.netty.channel.epoll.EpollServerSocketChannel
+import io.netty.channel.kqueue.KQueueIoHandler
+import io.netty.channel.kqueue.KQueueServerSocketChannel
+import io.netty.channel.nio.NioIoHandler
+import io.netty.channel.socket.nio.NioServerSocketChannel
+import net.cakemc.library.cluster.fallback.AbstractBackUpEndpoint
+import net.cakemc.library.cluster.fallback.endpoint.codec.CompressionCodec
+import net.cakemc.library.cluster.fallback.endpoint.codec.PublicationCodec
+import net.cakemc.library.cluster.fallback.endpoint.handler.BossHandler
 
 /**
  * Represents a network server in the cluster that listens for incoming connections from clients.
  *
- * <p>The {@code FallbackFallbackNetworkServer} class extends {@code FallbackNetworkPoint} to implement server-specific
- * behavior for initializing the server, handling incoming connections, and shutting down.</p>
+ *
+ * The `FallbackFallbackNetworkServer` class extends `FallbackNetworkPoint` to implement server-specific
+ * behavior for initializing the server, handling incoming connections, and shutting down.
  *
  * @see FallbackNetworkPoint
+ *
  * @see BossHandler
  */
-public class FallbackFallbackNetworkServer extends FallbackNetworkPoint {
+class FallbackFallbackNetworkServer
+/**
+ * Constructs a new `FallbackFallbackNetworkServer` with the specified cluster node.
+ *
+ * @param clusterNode the [AbstractBackUpEndpoint] representing the cluster node
+ */
+    (clusterNode: AbstractBackUpEndpoint) : FallbackNetworkPoint(clusterNode) {
+    /**
+     * Returns the boss event loop group for the server.
+     *
+     * @return the [EventLoopGroup] used for accepting connections
+     */
+    // Configuration
+    var bossGroup: EventLoopGroup? = null
+        private set
 
-	// Configuration
-	private EventLoopGroup bossGroup, workerGroup;
-	private Class<? extends ServerChannel> channel;
+    /**
+     * Returns the worker event loop group for the server.
+     *
+     * @return the [EventLoopGroup] used for processing connections
+     */
+    var workerGroup: EventLoopGroup? = null
+        private set
 
-	// Server
-	private ServerBootstrap serverBootstrap;
-	private ChannelFuture channelFuture;
+    /**
+     * Returns the class of the server channel being used.
+     *
+     * @return the [Class] of the server channel
+     */
+    var channel: Class<out ServerChannel?>? = null
+        private set
 
-	/**
-	 * Constructs a new {@code FallbackFallbackNetworkServer} with the specified cluster node.
-	 *
-	 * @param clusterNode the {@link AbstractBackUpEndpoint} representing the cluster node
-	 */
-	public FallbackFallbackNetworkServer(AbstractBackUpEndpoint clusterNode) {
-		super(clusterNode);
-	}
+    /**
+     * Returns the [ServerBootstrap] instance used to configure the server.
+     *
+     * @return the [ServerBootstrap] instance
+     */
+    // Server
+    var serverBootstrap: ServerBootstrap? = null
+        private set
 
-	/**
-	 * Initializes the network server by setting up the boss and worker event loop groups
-	 * and determining the channel type based on the available I/O model.
-	 */
-	@Override
-	public void initialize() {
-		IoHandlerFactory ioHandlerFactory = EPOLL ? (KQUEUE ? KQueueIoHandler.newFactory() : EpollIoHandler.newFactory()) : NioIoHandler.newFactory();
+    /**
+     * Returns the [ChannelFuture] representing the future of the server's channel.
+     *
+     * @return the [ChannelFuture] for the server channel
+     */
+    var channelFuture: ChannelFuture? = null
+        private set
 
-		this.bossGroup = new MultiThreadIoEventLoopGroup(2, ioHandlerFactory);
-		this.workerGroup = new MultiThreadIoEventLoopGroup(2, ioHandlerFactory);
+    /**
+     * Initializes the network server by setting up the boss and worker event loop groups
+     * and determining the channel type based on the available I/O model.
+     */
+    override fun initialize() {
+        val ioHandlerFactory =
+            if (FallbackNetworkPoint.Companion.EPOLL) (if (FallbackNetworkPoint.Companion.KQUEUE) KQueueIoHandler.newFactory() else EpollIoHandler.newFactory()) else NioIoHandler.newFactory()
 
-		this.channel = EPOLL ? (KQUEUE ? KQueueServerSocketChannel.class : EpollServerSocketChannel.class) : NioServerSocketChannel.class;
-	}
+        this.bossGroup = MultiThreadIoEventLoopGroup(2, ioHandlerFactory)
+        this.workerGroup = MultiThreadIoEventLoopGroup(2, ioHandlerFactory)
 
-	/**
-	 * Starts the server and binds it to the specified host and port.
-	 *
-	 * <p>The server is configured with various options, including compression and packet codecs.
-	 * It listens for incoming connections and initializes the channel pipeline for handling those connections.</p>
-	 *
-	 * @throws RuntimeException if the server initialization is interrupted
-	 */
-	@Override
-	public void connect() {
-		try {
-			(this.channelFuture = (this.serverBootstrap = new ServerBootstrap()
-				 .channel(channel)
+        this.channel =
+            if (FallbackNetworkPoint.Companion.EPOLL) (if (FallbackNetworkPoint.Companion.KQUEUE) KQueueServerSocketChannel::class.java else EpollServerSocketChannel::class.java) else NioServerSocketChannel::class.java
+    }
 
-				 // Child settings
-				 .childOption(ChannelOption.IP_TOS, 24)
-				 .childOption(ChannelOption.TCP_NODELAY, true)
-				 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+    /**
+     * Starts the server and binds it to the specified host and port.
+     *
+     *
+     * The server is configured with various options, including compression and packet codecs.
+     * It listens for incoming connections and initializes the channel pipeline for handling those connections.
+     *
+     * @throws RuntimeException if the server initialization is interrupted
+     */
+    override fun connect() {
+        try {
+            ((ServerBootstrap()
+                .channel(channel) // Child settings
 
-				 // Data settings
-				 .childOption(ChannelOption.WRITE_SPIN_COUNT, 1)
+                .childOption<Int>(ChannelOption.IP_TOS, 24)
+                .childOption<Boolean>(ChannelOption.TCP_NODELAY, true)
+                .childOption<ByteBufAllocator>(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT) // Data settings
 
-				 .option(ChannelOption.SO_REUSEADDR, true)
+                .childOption<Int>(ChannelOption.WRITE_SPIN_COUNT, 1)
 
-				 .group(bossGroup, workerGroup)
-				 .childHandler(new ChannelInitializer<>() {
-					 @Override
-					 protected void initChannel(Channel channel) throws Exception {
-						 ChannelPipeline channelPipeline = channel.pipeline();
-						 channelPipeline.addFirst(COMPRESSION_CODEC, new CompressionCodec());
-						 channelPipeline.addAfter(COMPRESSION_CODEC, PACKET_CODEC, new PublicationCodec());
-						 channelPipeline.addAfter(PACKET_CODEC, BOSS_HANDLER, new BossHandler(clusterNode, EndpointType.SERVER));
-					 }
-				 })
+                .option<Boolean>(ChannelOption.SO_REUSEADDR, true)
 
-				 .localAddress(host, port))
-				 .bind()
+                .group(bossGroup, workerGroup)
+                .childHandler(object : ChannelInitializer<Channel>() {
+                    @Throws(Exception::class)
+                    override fun initChannel(channel: Channel) {
+                        val channelPipeline = channel.pipeline()
+                        channelPipeline.addFirst(COMPRESSION_CODEC, CompressionCodec())
+                        channelPipeline.addAfter(
+                            COMPRESSION_CODEC,
+                            PACKET_CODEC,
+                            PublicationCodec()
+                        )
+                        channelPipeline.addAfter(
+                            PACKET_CODEC,
+                            BOSS_HANDLER,
+                            BossHandler(clusterNode, EndpointType.SERVER)
+                        )
+                    }
+                })
 
-				 .addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
-				 .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
-				 .syncUninterruptibly())
+                .localAddress(host, port).also { this.serverBootstrap = it })
+                .bind()
 
-				 .channel()
-				 .closeFuture()
-				 .sync();
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-	}
+                .addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
+                .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
+                .syncUninterruptibly().also { this.channelFuture = it })
 
-	/**
-	 * Executes periodic tasks for the server.
-	 *
-	 * <p>This method can be overridden to add server-specific tick behavior if needed.</p>
-	 */
-	@Override
-	public void tick() {
-		// Server-specific periodic tasks can be implemented here
-	}
+                .channel()
+                .closeFuture()
+                .sync()
+        } catch (e: InterruptedException) {
+            throw RuntimeException(e)
+        }
+    }
 
-	/**
-	 * Shuts down the network server, releasing any resources and connections.
-	 */
-	@Override
-	public void shutdown() {
-		this.channelFuture.channel().close().syncUninterruptibly();
-		this.bossGroup.shutdownGracefully().syncUninterruptibly();
-		this.workerGroup.shutdownGracefully().syncUninterruptibly();
-	}
+    /**
+     * Executes periodic tasks for the server.
+     *
+     *
+     * This method can be overridden to add server-specific tick behavior if needed.
+     */
+    override fun tick() {
+        // Server-specific periodic tasks can be implemented here
+    }
 
-	/**
-	 * Returns the boss event loop group for the server.
-	 *
-	 * @return the {@link EventLoopGroup} used for accepting connections
-	 */
-	public EventLoopGroup getBossGroup() {
-		return bossGroup;
-	}
-
-	/**
-	 * Returns the worker event loop group for the server.
-	 *
-	 * @return the {@link EventLoopGroup} used for processing connections
-	 */
-	public EventLoopGroup getWorkerGroup() {
-		return workerGroup;
-	}
-
-	/**
-	 * Returns the class of the server channel being used.
-	 *
-	 * @return the {@link Class} of the server channel
-	 */
-	public Class<? extends ServerChannel> getChannel() {
-		return channel;
-	}
-
-	/**
-	 * Returns the {@link ServerBootstrap} instance used to configure the server.
-	 *
-	 * @return the {@link ServerBootstrap} instance
-	 */
-	public ServerBootstrap getServerBootstrap() {
-		return serverBootstrap;
-	}
-
-	/**
-	 * Returns the {@link ChannelFuture} representing the future of the server's channel.
-	 *
-	 * @return the {@link ChannelFuture} for the server channel
-	 */
-	public ChannelFuture getChannelFuture() {
-		return channelFuture;
-	}
+    /**
+     * Shuts down the network server, releasing any resources and connections.
+     */
+    override fun shutdown() {
+        channelFuture!!.channel().close().syncUninterruptibly()
+        bossGroup!!.shutdownGracefully().syncUninterruptibly()
+        workerGroup!!.shutdownGracefully().syncUninterruptibly()
+    }
 }

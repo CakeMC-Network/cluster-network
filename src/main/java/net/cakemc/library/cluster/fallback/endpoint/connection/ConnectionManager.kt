@@ -1,113 +1,106 @@
-package net.cakemc.library.cluster.fallback.endpoint.connection;
+package net.cakemc.library.cluster.fallback.endpoint.connection
 
-import io.netty.channel.Channel;
-import net.cakemc.library.cluster.codec.Publication;
-import net.cakemc.library.cluster.fallback.BackUpClusterNode;
-import net.cakemc.library.cluster.fallback.endpoint.EndpointType;
-import net.cakemc.library.cluster.fallback.endpoint.handler.AbstractConnectionHandler;
-
-import java.util.ArrayList;
-import java.util.List;
+import io.netty.channel.Channel
+import net.cakemc.library.cluster.codec.Publication
+import net.cakemc.library.cluster.fallback.BackUpClusterNode
+import net.cakemc.library.cluster.fallback.endpoint.EndpointType
+import net.cakemc.library.cluster.fallback.endpoint.handler.AbstractConnectionHandler
 
 /**
  * Manages network connections and packet handling in the cluster.
  *
- * <p>The {@code ConnectionManager} class extends {@link AbstractConnectionManager}
+ *
+ * The `ConnectionManager` class extends [AbstractConnectionManager]
  * and implements the methods for handling connections and packet processing. It maintains
- * a list of {@link AbstractConnectionHandler} instances that are responsible for managing
- * specific packet types and connection states.</p>
+ * a list of [AbstractConnectionHandler] instances that are responsible for managing
+ * specific packet types and connection states.
  *
  * <h2>BackPacket Handling</h2>
- * <p>This class handles incoming backPackets by delegating the processing to registered
- * connection handlers. Each handler processes the packet in its own context.</p>
+ *
+ * This class handles incoming backPackets by delegating the processing to registered
+ * connection handlers. Each handler processes the packet in its own context.
  *
  * <h2>Connection Management</h2>
- * <p>When a connection is established or disconnected, the manager notifies all
- * registered connection handlers, allowing them to take appropriate actions.</p>
+ *
+ * When a connection is established or disconnected, the manager notifies all
+ * registered connection handlers, allowing them to take appropriate actions.
  *
  * @see AbstractConnectionManager
+ *
  * @see AbstractConnectionHandler
  */
-public class ConnectionManager extends AbstractConnectionManager {
+class ConnectionManager(private val backUpClusterNode: BackUpClusterNode) : AbstractConnectionManager() {
+    /**
+     * The list of registered connection handlers for processing backPackets and managing connections.
+     */
+    private val abstractConnectionHandlers: MutableList<AbstractConnectionHandler> = ArrayList()
 
-	/**
-	 * The list of registered connection handlers for processing backPackets and managing connections.
-	 */
-	private final List<AbstractConnectionHandler> abstractConnectionHandlers = new ArrayList<>();
+    /**
+     * Handles an inbound packet received from a channel.
+     *
+     *
+     * This method iterates through all registered connection handlers and delegates the
+     * processing of the received [Publication] to each handler.
+     *
+     * @param sender the [Channel] from which the packet was received
+     * @param ringPacket the [Publication] that was received
+     */
+    override fun handleInboundPacket(sender: Channel, ringPacket: Publication) {
+        for (connectionHandler in abstractConnectionHandlers) {
+            connectionHandler.handlePacket(sender, ringPacket)
+        }
+    }
 
-	private final BackUpClusterNode backUpClusterNode;
+    /**
+     * Registers a new packet handler to manage incoming backPackets.
+     *
+     *
+     * The registered [AbstractConnectionHandler] will be notified of all backPackets
+     * received through the `ConnectionManager`.
+     *
+     * @param abstractConnectionHandler the [AbstractConnectionHandler] responsible for processing backPackets
+     */
+    override fun registerPacketHandler(abstractConnectionHandler: AbstractConnectionHandler) {
+        abstractConnectionHandlers.add(abstractConnectionHandler)
+    }
 
-	public ConnectionManager(BackUpClusterNode backUpClusterNode) {
-		this.backUpClusterNode = backUpClusterNode;
-	}
+    /**
+     * Handles the disconnection of a channel.
+     *
+     *
+     * This method notifies all registered connection handlers about the disconnection
+     * event, allowing them to perform necessary cleanup or state updates.
+     *
+     * @param channel the [Channel] that has disconnected
+     * @param endpointType the [EndpointType] of the disconnected endpoint
+     */
+    override fun handleDisconnect(channel: Channel?, endpointType: EndpointType?) {
+        for (abstractConnectionHandler in abstractConnectionHandlers) {
+            abstractConnectionHandler.handleDisconnect(channel, endpointType)
+        }
+    }
 
-	/**
-	 * Handles an inbound packet received from a channel.
-	 *
-	 * <p>This method iterates through all registered connection handlers and delegates the
-	 * processing of the received {@link Publication} to each handler.</p>
-	 *
-	 * @param sender the {@link Channel} from which the packet was received
-	 * @param ringPacket the {@link Publication} that was received
-	 */
-	@Override
-	public void handleInboundPacket(Channel sender, Publication ringPacket) {
-		for (AbstractConnectionHandler connectionHandler : abstractConnectionHandlers) {
-			connectionHandler.handlePacket(sender, ringPacket);
-		}
-	}
+    /**
+     * Handles the connection of a channel.
+     *
+     *
+     * This method notifies all registered connection handlers about the new connection,
+     * allowing them to take appropriate actions for the established connection.
+     *
+     * @param channel the [Channel] that has connected
+     * @param endpointType the [EndpointType] of the connected endpoint
+     */
+    override fun handleConnect(channel: Channel?, endpointType: EndpointType?) {
+        for (abstractConnectionHandler in abstractConnectionHandlers) {
+            abstractConnectionHandler.handleConnect(channel, endpointType)
+        }
+    }
 
-	/**
-	 * Registers a new packet handler to manage incoming backPackets.
-	 *
-	 * <p>The registered {@link AbstractConnectionHandler} will be notified of all backPackets
-	 * received through the {@code ConnectionManager}.</p>
-	 *
-	 * @param abstractConnectionHandler the {@link AbstractConnectionHandler} responsible for processing backPackets
-	 */
-	@Override
-	public void registerPacketHandler(AbstractConnectionHandler abstractConnectionHandler) {
-		abstractConnectionHandlers.add(abstractConnectionHandler);
-	}
-
-	/**
-	 * Handles the disconnection of a channel.
-	 *
-	 * <p>This method notifies all registered connection handlers about the disconnection
-	 * event, allowing them to perform necessary cleanup or state updates.</p>
-	 *
-	 * @param channel the {@link Channel} that has disconnected
-	 * @param endpointType the {@link EndpointType} of the disconnected endpoint
-	 */
-	@Override
-	public void handleDisconnect(Channel channel, EndpointType endpointType) {
-		for (AbstractConnectionHandler abstractConnectionHandler : abstractConnectionHandlers) {
-			abstractConnectionHandler.handleDisconnect(channel, endpointType);
-		}
-	}
-
-	/**
-	 * Handles the connection of a channel.
-	 *
-	 * <p>This method notifies all registered connection handlers about the new connection,
-	 * allowing them to take appropriate actions for the established connection.</p>
-	 *
-	 * @param channel the {@link Channel} that has connected
-	 * @param endpointType the {@link EndpointType} of the connected endpoint
-	 */
-	@Override
-	public void handleConnect(Channel channel, EndpointType endpointType) {
-		for (AbstractConnectionHandler abstractConnectionHandler : abstractConnectionHandlers) {
-			abstractConnectionHandler.handleConnect(channel, endpointType);
-		}
-	}
-
-	/**
-	 * Returns the list of registered packet handlers.
-	 *
-	 * @return a list of {@link AbstractConnectionHandler} instances
-	 */
-	public List<AbstractConnectionHandler> getPacketHandlers() {
-		return abstractConnectionHandlers;
-	}
+    val packetHandlers: List<AbstractConnectionHandler>
+        /**
+         * Returns the list of registered packet handlers.
+         *
+         * @return a list of [AbstractConnectionHandler] instances
+         */
+        get() = abstractConnectionHandlers
 }

@@ -1,60 +1,46 @@
-package net.cakemc.library.cluster.cache;
+package net.cakemc.library.cluster.cache
 
-import java.util.HashMap;
-import java.util.Map;
+class DefaultPublicationStore : PublicationStore {
+    private val cache: MutableMap<String?, SelectedAwareNodes> =
+        HashMap()
 
-public class DefaultPublicationStore implements PublicationStore {
+    override fun updateAwareNodes(key: String?, version: Long, awareNodes: ShortArray) {
+        var message = cache[key]
 
-	private final Map<String, SelectedAwareNodes> cache;
+        if (message == null) {
+            message = SelectedAwareNodes(version, awareNodes)
+            cache.put(key, message)
+            return
+        }
 
-	public DefaultPublicationStore() {
-		cache = new HashMap<>();
-	}
+        if (message.version < version) {
+            message.version = version
+            message.awareNodes = awareNodes
+        } else if (message.version == version) {
+            val combined = ShortArray(awareNodes.size + message.awareNodes.size)
+            var index = 0
+            for (i in message.awareNodes.indices) {
+                combined[i] = message.awareNodes[index++]
+            }
+            for (awareNode in awareNodes) {
+                combined[index] = awareNode
+                index++
+            }
+            message.awareNodes = combined
+        }
+    }
 
-	@Override
-	public void updateAwareNodes(String key, long version, short[] awareNodes) {
-		SelectedAwareNodes message = cache.get(key);
+    override fun getAwareNodes(key: String?, version: Long): ShortArray? {
+        val message = cache[key] ?: return null
 
-		if (message == null) {
-			message = new SelectedAwareNodes(version, awareNodes);
-			cache.put(key, message);
-			return;
-		}
+        if (message.version == version) {
+            return message.awareNodes
+        }
 
-		if (message.version < version) {
-			message.version = version;
-			message.awareNodes = awareNodes;
-		} else if (message.version == version) {
-			short[] combined = new short[awareNodes.length + message.awareNodes.length];
-			int index = 0;
-			for (int i = 0 ; i < message.awareNodes.length ; i++) {
-				combined[i] = message.awareNodes[index++];
-			}
-			for (short awareNode : awareNodes) {
-				combined[index] = awareNode;
-				index++;
-			}
-			message.awareNodes = combined;
-		}
-	}
+        return null
+    }
 
-	@Override
-	public short[] getAwareNodes(String key, long version) {
-		SelectedAwareNodes message = cache.get(key);
-
-		if (message == null) {
-			return null;
-		}
-
-		if (message.version == version) {
-			return message.awareNodes;
-		}
-
-		return null;
-	}
-
-	@Override
-	public void shutdown() {
-		cache.clear();
-	}
+    override fun shutdown() {
+        cache.clear()
+    }
 }

@@ -1,7 +1,3 @@
-package net.cakemc.library.cluster.config;
+package net.cakemc.library.cluster.config
 
-public class SyncConfig {
-
-	// todo
-
-}
+class SyncConfig 

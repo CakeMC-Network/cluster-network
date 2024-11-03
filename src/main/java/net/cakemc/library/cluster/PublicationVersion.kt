@@ -1,13 +1,10 @@
-package net.cakemc.library.cluster;
+package net.cakemc.library.cluster
 
-public enum PublicationVersion {
+enum class PublicationVersion {
+    DEFAULT,
+    INVALID,
 
-	DEFAULT,
-	INVALID,
+    OUTDATED,
 
-	OUTDATED,
-
-	IGNORE,
-	;
-
+    IGNORE,
 }
