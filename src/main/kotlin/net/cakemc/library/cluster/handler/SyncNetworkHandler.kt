@@ -1214,7 +1214,7 @@ class SyncNetworkHandler : SimpleChannelInboundHandler<DefaultSyncPublication> {
       return
     }
 
-    if (message.isInStartup && startupStateFromSession != null) {
+    if (message.isInStartup) {
       context.writeAndFlush(
         createSimpleResponse(
           DefaultSyncPublication.MessageType.TYPE_BOTH_STARTUP,

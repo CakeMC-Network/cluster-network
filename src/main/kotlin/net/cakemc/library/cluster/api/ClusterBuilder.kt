@@ -13,16 +13,16 @@ import java.util.*
 class ClusterBuilder(id: Int) {
     private val stateMachine: StateMachine
 
-    private val channels: MutableSet<String>?
-    private val members: MutableSet<MemberIdentifier>?
-    private var ownAddress: MemberIdentifier? = null
-    private val handlerMap: MutableMap<String, PublicationHandler>?
+    private val channels: MutableSet<String>
+    private val members: MutableSet<MemberIdentifier>
+    private lateinit var ownAddress: MemberIdentifier
+    private val handlerMap: MutableMap<String, PublicationHandler>
 
     private val id: Short
-    private var publicationType: Class<out Publication?>? = null
-    private var authentication: Authentication? = null
-    private var prioritised: ShortArray? = null;
-    private var type: SynchronisationType? = null
+    private lateinit var publicationType: Class<out Publication?>
+    private lateinit var authentication: Authentication
+    private lateinit var prioritised: ShortArray
+    private lateinit var type: SynchronisationType
 
     /**
      * Constructs a new ClusterBuilder with the specified identifier.
@@ -86,7 +86,7 @@ class ClusterBuilder(id: Int) {
      * @param type the synchronization type to set
      * @return the current instance of ClusterBuilder
      */
-    fun type(type: SynchronisationType?): ClusterBuilder {
+    fun type(type: SynchronisationType): ClusterBuilder {
         this.type = type
         stateMachine.addState(CLUSTER_TYPE)
         return this
@@ -98,7 +98,7 @@ class ClusterBuilder(id: Int) {
      * @param addresses the member identifiers to add
      * @return the current instance of ClusterBuilder
      */
-    fun members(vararg addresses: MemberIdentifier?): ClusterBuilder {
+    fun members(vararg addresses: MemberIdentifier): ClusterBuilder {
         members?.addAll(Arrays.asList(*addresses))
         stateMachine.addState(MEMBERS)
         return this
@@ -110,7 +110,7 @@ class ClusterBuilder(id: Int) {
      * @param authentication the authentication to set
      * @return the current instance of ClusterBuilder
      */
-    fun authentication(authentication: Authentication?): ClusterBuilder {
+    fun authentication(authentication: Authentication): ClusterBuilder {
         this.authentication = authentication
         stateMachine.addState(AUTHENTICATOR)
         return this
@@ -148,7 +148,7 @@ class ClusterBuilder(id: Int) {
      * @param publicationInstance the class of the publication type to set
      * @return the current instance of ClusterBuilder
      */
-    fun withPublicationType(publicationInstance: Class<out Publication?>?): ClusterBuilder {
+    fun withPublicationType(publicationInstance: Class<out Publication?>): ClusterBuilder {
         this.publicationType = publicationInstance
         stateMachine.addState(PUBLICATION_TYPE)
         return this
