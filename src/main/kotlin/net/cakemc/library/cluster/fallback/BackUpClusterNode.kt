@@ -134,7 +134,7 @@ class BackUpClusterNode(
      * This method is called periodically by the TickThread.
      */
     override fun tick() {
-        otherNodes.forEach { (nodeInformation: MemberIdentifier?,
+        otherNodes.forEach { (_: MemberIdentifier?,
                                fallbackNetworkClient: FallbackFallbackNetworkClient?) -> fallbackNetworkClient?.tick() }
         networkServer.tick()
         connectionHandler.tick()

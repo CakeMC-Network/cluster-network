@@ -80,7 +80,7 @@ class ClusterContext
    * Creates an internal cluster context, initializing necessary components, and
    * starting the network server and backup endpoint.
    */
-  fun createInternalCluster() {
+  public fun createInternalCluster() {
     context = SyncContext(id)
 
     handler = context

@@ -189,7 +189,6 @@ class ClusterBuilder(id: Int) {
         context.members = this.members
         context.ownAddress = this.ownAddress
 
-        context.createInternalCluster()
         return context
     }
 

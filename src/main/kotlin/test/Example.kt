@@ -47,6 +47,9 @@ object Example {
       "test"
     ) { session: Session?, message: Publication?, withNodes: ClusterIdRegistry?, out: PublicationBundle? -> true }
 
+    // start the internal cluster
+    context.createInternalCluster()
+
     // creating a publisher
     context.publisher()
       // skipping own id
@@ -62,5 +65,7 @@ object Example {
           1
         )
       )
+
+
   }
 }

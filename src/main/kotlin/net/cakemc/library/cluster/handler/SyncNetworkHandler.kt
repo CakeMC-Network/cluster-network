@@ -291,9 +291,6 @@ class SyncNetworkHandler : SimpleChannelInboundHandler<DefaultSyncPublication> {
       }
     }
 
-    println(clusterSnapshot)
-    println(clusterSnapshot.aliveCluster)
-
     val aliveClusterMembers: MutableList<ClusterMember?> = clusterSnapshot.aliveCluster
     sessions = ArrayList()
 
